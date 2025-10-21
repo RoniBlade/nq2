@@ -1,0 +1,131 @@
+= Ninja
+:page-upkeep-status: red
+:page-upkeep-note: Need to update, also for midScale and DB migration
+:page-alias: { "parent" : "/midpoint/tools/" }
+
+[NOTE]
+====
+Since midPoint 4.8. Also in 4.4.6, 4.7.2 and later.
+
+* Commands and options names realigned:
+** All command and option names are kebab cased
+** File output is now `-o, --output`
+** `-O, --overwrite` for all commands
+====
+
+Ninja is a command line tool bundled with midPoint.
+Implemented features are based on "repo-ninja", but code was rewritten from the ground up.
+This tool comes in handy when one needs to export or import objects from/to midPoint.
+Operations can be done on top of repository (DB) layer or through REST API.
+Access through DB layer can be very powerful, especially in cases when UI fails.
+For example when midPoint fails to start because of configuration issue or objects data corruption.
+Another great example is "administrator" user lockout.
+
+Users of this tool need to be aware that using repository layer, access is not validated using
+authorisations, model component is not used during processing and changes are not audited.
+It allows you to obtain or modify data in an otherwise unusable midPoint.
+Ninja also supports some other operations like listing keys from keystore, enforcing objects
+reencryption with new key, DB schema validation, password reset or user unlock.
+
+Ninja can be started using standard `java -jar` or via bundled shell/bat script.
+Bundled shell and bat scripts are located in the midPoint installation directory, e.g. `<midpoint>/bin/ninja.sh`.
+Bundled scripts will automatically fill in path to for xref:/midpoint/reference/deployment/midpoint-home-directory/[midPoint home]
+option `-m` using `MIDPOINT_HOME` environment variable, defaulting to the `<midpoint>/var`.
+
+== Connecting to midPoint
+
+Connection options:
+
+* using `$MIDPOINT_HOME`
+
+=== Using `$MIDPOINT_HOME>/config.xml` connection
+
+This type of connection initialises repository layer of midPoint and operates on top of the database.
+For all commands that communicate with DB layer `$MIDPOINT_HOME` must be specified using `-m <midpoint_home_path>` option.
+Ninja will try to read database connection information from `config.xml`.
+This will not work when there's only datasource definition in `config.xml` (no JDBC url/username/password).
+In such chase one have to specify URL (`-U`), username (`-u`) and password (`-p` or `-P`).
+These options can also be used to override JDBC URL, username and password specified in `config.xml`.
+
+With bash, you can provide environment variable `MIDPOINT_HOME` for the `ninja.sh` command.
+
+.Example of command with `$MIDPOINT_HOME` environment variable
+[source,bash]
+----
+MIDPOINT_HOME=/var/other-mp-home <midpoint>/bin/ninja.sh [general options] [JDBC connection overrides] [command] [command options]
+----
+
+.Example of command using `MIDPOINT_HOME` via `-m` option
+[source,bash]
+----
+<midpoint>/bin/ninja.sh -m /var/other-mp-home [general options] [JDBC connection overrides] [command] [command options]
+----
+
+==== Using custom JDBC Driver
+
+Only JDBC driver that is bundled is for PostgreSQL database.
+This means that for other databases, you must provide JDBC driver yourself.
+Most of the time JDBC driver is already present in `<midpoint>/lib` directory.
+However, it will not be picked up automatically, and you must point ninja to it explicitly.
+You can specify the path to the JDBC driver with `-j` option.
+
+.Full command syntax with custom JDBC driver option
+[source,bash]
+----
+<midpoint>/bin/ninja.sh -j <jdbc_driver_jar_path> [general/connection options] [command] [command options]
+----
+
+== Standalone usage
+
+Ninja can be used as a standalone jar file without ninja shell/bat scripts.
+Following example shows how to use custom JDBC driver using `-Dloader.path`.
+`-m` option is also needed to specify midPoint home directory.
+
+.Generic example displaying different parts of command and it's parameters
+[source,bash]
+----
+java [-Dloader.path=<jdbc_driver_jar_path>] -jar ninja.jar [general/connection options] [command] [specific command options]
+----
+
+.Example of standalone usage for PostgreSQL database, in case JDBC url, username and password are specified in `$MIDPOINT_HOME/config.xml`
+[source,bash]
+----
+java -jar ninja.jar -m /opt/midpoint-home export -t UserType -o /tmp/user-types.xml
+----
+
+.Example of standalone usage for SQL Server database, in case we want to override JDBC url, username and password
+[source,bash]
+----
+java -Dloader.path=PATH_TO_SQL_SERVER_JDBC_DRIVER_JAR_FILE -jar ninja.jar -m /opt/midpoint-home -U jdbc:sqlserver://localhost:1433;databaseName=midpoint -u MY_JDBC_USERNAME -p MY_JDBC_PASSWORD export -t UserType -o /tmp/user-types.xml
+----
+
+== FAQ
+
+=== Can I use ninja from midPoint 4.8.* distribution with deployment running midPoint 4.4.*?
+
+No, ninja 4.8 internally uses repository (DB) implementation from midPoint 4.8
+MidPoint 4.4.* has differences in DB schema compared to midPoint 4.8.
+Technically it is possible to run ninja 4.4.7 against midPoint 4.4.2 for example since DB schema didn't change between these versions.
+However, this is not recommended and not supported.
+
+=== Why raw (`-r`, `--raw`) option is needed when exporting objects?
+
+Raw option will tell ninja to export objects together with their definitions if needed.
+These definitions are used to import objects back to midPoint.
+For more information see xref:./command/export.adoc[].
+
+=== How multithreading works?
+
+Ninja uses multithreading for exporting and importing objects.
+Ninja will create a thread pool with a number of threads.
+
+When reading objects from midPoint, ninja will create queries that will split the data by object type (e.g. users, roles, shadows, ...).
+On top of this, shadow objects are also split by resource oid.
+Each query and query results is then processed in a separate thread.
+
+When importing objects to midPoint, ninja will read the file with objects into single queue and add objects to midPoint repository in parallel.
+
+== See also
+
+* xref:./command/index.adoc[Commands reference]
+* xref:./use-case/index.adoc[Use cases]

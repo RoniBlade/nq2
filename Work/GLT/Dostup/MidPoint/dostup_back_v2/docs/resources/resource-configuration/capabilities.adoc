@@ -1,0 +1,280 @@
+= Resource Capabilities
+:page-nav-title: Capabilities
+:page-wiki-name: Resource Capabilities
+:page-wiki-id: 8060978
+:page-wiki-metadata-create-user: semancik
+:page-wiki-metadata-create-date: 2013-03-14T12:11:38.996+01:00
+:page-wiki-metadata-modify-user: mederly
+:page-wiki-metadata-modify-date: 2019-08-06T14:19:49.581+02:00
+:page-upkeep-status: green
+:page-liquid:
+
+Capabilities are definitions of a specific things that a resource can do.
+There is plethora of various resource types and configuration.
+Some resources can enable/disable an account, while others cannot.
+Some resource can provide live feed of changes, some cannot.
+The `capabilities` section lists the features that the resource has.
+
+There are two sections of capabilities definition:
+
+* *Native capabilities* are native to the resource.
+There are the things that resource can do all by itself without any help from midPoint.
+The list of native capabilities is provided by the connector and does not need to be configured.
+It is stored in the resource configuration object (`ResourceType`) for performance reasons.
+If this section is not present in the resource configuration it will be automatically fetched from the resource before its first use.
+
+* *Configured capabilities* are decision of an administrator how to use native capabilities.
+This section can be used to disable native capabilities or add missing capabilities.
+Some capabilities can be _simulated_ by midPoint.
+E.g., a resource does not support account enable/disable directly.
+But administrator know that the enable/disable may be done by flipping a boolean value of a specific attribute.
+Such simulated capability can be configured in this section.
+MidPoint will then pretend that the resource has the enable/disable ability.
+But each time the ability us used it will transparently convert the operation to modification of the special attribute.
+That's how midPoint simulates some capabilities.
+
+These two sections are added together to form *presented capabilities* (or just "capabilities").
+These are all the features that the resource can do by itself (native capabilities), minus the capabilities that were disabled, plus the capabilities that are simulated.
+GUI, IDM model and business logic will all work only with *presented capabilities*, whether the capability is native or simulated does not matter for such upper system layers.
+
+The following example shows a configuration for a simulated activation capability using OpenDJ `ri:ds-pwp-account-disabled` attribute (the value `true` means, the OpenDJ account is disabled; empty value means, the OpenDJ account is enabled) and a configuration for disabling `liveSync` capability.
+The resource would ignore tha `liveSync` capability as if it would not be supported by the connector.
+
+.LDAP Resource Capabilities Example
+[source,xml]
+----
+<capabilities>
+    <cachingMetadata>...</cachingMetadata>
+    <native>
+        <cap:script>
+            <cap:host>
+                <cap:type>connector</cap:type>
+            </cap:host>
+        </cap:script>
+        <cap:credentials>
+            <cap:password/>
+        </cap:credentials>
+        <cap:testConnection/>
+        <cap:liveSync/>
+    </native>
+    <configured>
+        <cap:activation>
+            <cap:status>
+                <cap:attribute>ri:ds-pwp-account-disabled</cap:attribute>
+                <cap:enableValue/>
+                <cap:disableValue>true</cap:disableValue>
+            </cap:status>
+        </cap:activation>
+        <cap:liveSync>
+            <cap:enabled>false</cap:enabled>
+       </cap:liveSync>
+     </configured>
+</capabilities>
+----
+
+The capabilities can be used also to disable provisioning operations on the resource, e.g. during imports, reconciliation etc.
+The following example shows a configuration for a resource, where no `create` or `delete` operations are possible, only `update`.
+Attempt to create or delete any object on the resource would fail with an error.
+
+[source,xml]
+----
+<capabilities xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3">
+    <configured>
+        <cap:create>
+            <cap:enabled>false</cap:enabled>
+        </cap:create>
+        <cap:update>
+            <cap:enabled>true</cap:enabled>
+        </cap:update>
+        <cap:delete>
+            <cap:enabled>false</cap:enabled>
+        </cap:delete>
+    </configured>
+</capabilities>
+----
+
+IMPORTANT: Keep in mind the capabilities section works as override.
+For example if you explicitly override `update` and set `enabled` to `true`, you are explicitly setting the capability to xref:/midpoint/reference/resources/resource-configuration/schema-handling/attributes/read-replace-and-modification-priority/[read/replace mode].
+(This can be dangerous, especially with attributes with many values, not always being fetched completely - like group members.)
+In case you would like to enable advanced logic for `delta` or `addRemoveAttributeValues` you have to set them explicitly to `true`.
+
+[source,xml]
+----
+<configured xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3">
+    <cap:update>
+        <cap:enabled>true</cap:enabled>
+        <cap:delta>true</cap:delta>
+        <cap:addRemoveAttributeValues>true</cap:addRemoveAttributeValues>
+    </cap:update>
+</configured>
+----
+
+== Another example: Precise token value in Live synchronization
+
+As another example let's consider `preciseTokenValue` property in `cap:liveSync`  capability:
+
+[source,xml]
+----
+<capabilities xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3">
+    <configured>
+        <cap:liveSync>
+            <cap:preciseTokenValue>true</cap:preciseTokenValue>
+        </cap:liveSync>
+    </configured>
+</capabilities>
+----
+
+This tells midPoint that the resource provides _live synchronization_ capability with the additional assurance that token values that are attached to each change emitted by the resource are precise enough to guarantee correct restart of live synchronization process after processing of each given change.
+If this information is not present, midPoint restarts live synchronization (in case of suspension or failure) at the same place where it was _started_, instead where it was _stopped_.
+
+Some resources are known to provide precise token values, others are known of not doing so (e.g. for performance reasons).
+Others - e.g. those served by ScriptedSQL connector - depend on particular configuration of the connector.
+It is the responsibility of the connector user (that configures the resource) to know the behavior of the connector, and to correctly specify this capability in the resource definition.
+
+See also xref:/midpoint/reference/tasks/synchronization-tasks/live-synchronization.adoc[].
+
+== Supported capabilities
+
+The following tables summarize the capabilities that are supported as native or configured ones.
+
+[%autowidth]
+|===
+| Item name | Type name | Description
+
+| `schema`
+| `SchemaCapabilityType`
+| Describes the capability to discover resource schema.
+
+| `discoverConfiguration`
+| DiscoverConfigurationCapabilityType
+| Describes the capability to do configuration discovery, check and recommendation (via `DiscoverConfigurationApiOp` ConnId method).
+
+| `activation`
+| `ActivationCapabilityType`
+| Describes the capability to process activation data, which means enable/disable of accounts, dates for scheduled enable/disable and similar things related to make the account active. See below.
+
+| `activation/status`
+| `ActivationStatusCapabilityType`
+| Describes the capability to provide activation status (e.g. account enable and disable).
+
+| `activation/validFrom`
+.2+| `ActivationValidityCapabilityType`
+.2+| Describes the capability to provide activation validity dates.
+
+| `activation/validTo`
+
+| `activation/lockoutStatus`
+| `ActivationLockoutStatusCapabilityType`
+| Describes the capability to provide lockout status (e.g. account temporarily disabled due to many failed login attempts).
+
+| `references`
+| `ReferencesCapabilityType`
+| Describes the (native or simulated) support for reference attributes.
+See xref:/midpoint/reference/resources/entitlements/#_simulated_references[Simulated Reference Type Definition].
+
+| `credentials`
+| `CredentialsCapabilityType`
+| Describes the capability to present credentials in a structured way.
+
+| `credentials/password`
+| `PasswordCapabilityType`
+| Describes the capability to present password in a structured way.
+
+| `liveSync`
+| `LiveSyncCapabilityType`
+| Describes the capability to detect changes in almost real time (live synchronization).
+
+| `asyncUpdate`
+| `AsyncUpdateCapabilityType`
+| Describes the capability to process asynchronous updates.
+
+| `create`
+| `CreateCapabilityType`
+| Describes the create capability, i.e., the ability to create objects on the resource.
+
+| `read`
+| `ReadCapabilityType`
+| Describes the read capability, i.e., the ability to read objects from the resource.
+
+| `update`
+| `UpdateCapabilityType`
+| Describes the update capability, i.e., the ability to update objects on the resource.
+Contains options like the support for adding/removing attribute values or complex deltas.
+
+| `delete`
+| `Delete
+| Describes the delete capability, i.e., the ability to delete objects on the resource.
+
+| `testConnection`
+| `TestConnectionCapabilityType`
+| Describes the capability to test connection to the resource once the connector is configured.
+
+| `script`
+| `ScriptCapabilityType`
+| Describes the capability to execute scripts (short pieces of program) on the connector or resource.
+
+| `pagedSearch`
+| `PagedSearchCapabilityType`
+| How to handle paged searches.
+
+| `countObjects`
+| `CountObjectsCapabilityType`
+| Ability to efficiently count objects.
+
+| `auxiliaryObjectClasses`
+| `AuxiliaryObjectClassesCapabilityType`
+| Describes the capability to specify additional (auxiliary) object classes in addition to the primary (structural) object class.
+This capability cannot be disabled (for now).
+
+| `runAs`
+| `RunAsCapabilityType`
+| Describes the capability to execute operations with specified identity.
+
+| `behavior`
+| `BehaviorCapabilityType`
+| Container for various behavior-related capabilities.
+
+| `behavior/lastLoginTimestamp`
+| `LastLoginTimestampCapabilityType`
+| Describes the capability of resource to provide last login timestamp.
+|===
+
+[#_behavior]
+=== Behavior Capability
+
+The `BehaviorCapabilityType` is a container for various behavior-related capabilities.
+Currently, it contains only one capability `lastLoginTimestamp`.
+
+==== Last Login Timestamp Capability
+
+As name suggest, last login timestamp provides timestamp of last login for specific object on resource, most often account.
+This capability is natively recognized by midPoint if the resource object has attribute with name `\_LAST_LOGIN_DATE_` attribute (`long`).
+
+Last login timestamp capability can be also manually configured to point to different attribute using `attribute` element.
+If attribute is `string` type, then `format` element can be used to specify format of the timestamp.
+It also allows to specify whether such attribute should be listed or omitted in attributes via `ignoreAttribute` flag.
+
+.Example of configured last login timestamp capability
+[source,xml]
+----
+<capabilities xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3"
+              xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <configured>
+        <cap:behavior>
+            <cap:lastLoginTimestamp>
+                <cap:attribute>ri:myLastLoginTimestampAttributeName</cap:attribute>
+                <cap:format>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</cap:format>
+                <cap:ignoreAttribute>true</cap:ignoreAttribute>
+            </cap:lastLoginTimestamp>
+        </cap:behavior>
+    </configured>
+</capabilities>
+----
+
+== How to Access
+
+Capabilities are visually described when clicking on the "Resource" -> "All resources" -> (select a resource) -> "Details".
+They can be enabled and disabled by clicking on respective tiles.
+
+Or, they can be located right in the XML representation of the resource configuration object, accessed either by "Edit raw" (when the resource is displayed) or going through the path "Configuration" -> "Repository objects" -> type: Resource -> (select a resource).
+The element to look for is `capabilities`.

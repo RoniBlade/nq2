@@ -1,0 +1,86 @@
+import pandas as pd
+import psycopg2
+import boto3
+import logging
+import os
+from dotenv import load_dotenv
+
+print("Start application")
+
+load_dotenv()
+
+logger = logging.getLogger('dqlogger')
+logging.basicConfig(level=logging.INFO,
+                    filename="app_logs.log",
+                    filemode="a",
+                    format="%(asctime)s %(levelname)s %(message)s")
+
+logging.info('-- НАЧАЛО ВЫПОЛНЕНИЯ ПРОГРАММЫ --')
+
+DBHOST = os.environ.get('DBHOST')
+DBPORT = os.environ.get('DBPORT')
+DBNAME = os.environ.get('DBNAME')
+DBUSER = os.environ.get('DBUSER')
+DBPASSWORD = os.environ.get('DBPASSWORD')
+
+url = f"postgresql://{DBUSER}:{DBPASSWORD}@{DBHOST}:{DBPORT}/{DBNAME}"
+
+try:
+    conn = psycopg2.connect(url)
+    cursor = conn.cursor()
+    logging.info('Подключение к базе данных успешно установлено.')
+except Exception as e:
+    logging.error(f'Ошибка подключения к базе данных: {e}')
+
+#session = boto3.session.Session()
+#s3 = session.client(
+#    service_name='s3',
+#    aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+#    aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+#    endpoint_url=os.environ.get('S3_ENDPOINT_URL'),
+#    verify=False
+#)
+
+list_of_data_objects, list_of_dictionaries = list(), list()
+#substring_1 = '/'
+#substring_2 = 'dictionary/'
+#file_name = 'data.csv'
+#bucket_name = 'prdsaphistory'
+
+list_s3 = os.listdir("/s3/")
+
+def download_data(text: str, source_dir: str):
+    l = os.listdir(source_dir)
+    for key_name in l:
+        if(not key_name.endswith(".csv")):
+          continue
+        print("Upload file " + key_name)
+        logging.info(f'-- ПРОЦЕСС ЗАГРУЗКИ ДАННЫХ ИЗ {key_name} НАЧАЛСЯ --')
+
+        try:
+        #        s3.download_file(bucket_name, key_name, file_name)
+          logging.info(f'Файл {key_name} успешно загружен.')
+
+        #        df = pd.read_csv(file_name, sep=';', chunksize=10000, dtype=str)
+          name = source_dir + key_name
+          print("Start read to pd file " + name)
+          df = pd.read_csv(name, sep=';', chunksize=10000, dtype=str)
+          print("End reading file " + name)
+          for i, chunk in enumerate(df, 1):
+              chunk.to_sql(name=name.replace(text, ""),
+                           con=url,
+                           schema='loading_saphistory',
+                           chunksize=10000,
+                           index=False,
+                           if_exists='append')
+              logging.info(f'Чанк {i} из {key_name} успешно загружен в БД.')
+        except Exception as e:
+            print(f'Error {e}')
+            logging.error(f'Ошибка при обработке файла {key_name}: {e}')
+        finally:
+            logging.info(f'-- ПРОЦЕСС ЗАГРУЗКИ ДАННЫХ ИЗ {key_name} ЗАВЕРШИЛСЯ --')
+
+download_data(text=" EXPORT.csv", source_dir="/s3/")
+download_data(text="_export.csv", source_dir="/s3/dictionary/")
+
+logging.info('-- ЗАВЕРШЕНИЕ ВЫПОЛНЕНИЯ ПРОГРАММЫ --')

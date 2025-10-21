@@ -1,0 +1,16 @@
+1. Создать связи(relationships)
+2. Создать properties(смотреть по методике решения задачи)
+
+ссылки
+- https://nifi.apache.org/docs/nifi-docs/html/developer-guide.html
+- https://www.javadoc.io/doc/org.apache.nifi/nifi-api/1.23.2/org/apache/nifi/components/
+
+примеры C:\Users\Adam\Documents\Работа\NiFiProjects\примеры
+задача:
+    Адаптировать код из ParseFields для NiFi
+    Добавить метод чтения шаблона SQL запроса с сервера
+    Обработка флоуфайла по логике из ParseFields
+    И создание запроса
+
+addit.
+    create table fas27.bseg on cluster fas27cluster

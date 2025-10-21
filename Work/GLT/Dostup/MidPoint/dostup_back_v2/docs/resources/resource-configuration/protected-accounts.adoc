@@ -1,0 +1,90 @@
+---
+midpoint-feature: protected-accounts
+doc-type: intro
+---
+= Protected Accounts
+:page-wiki-name: Protected Accounts
+:page-wiki-id: 4423682
+:page-wiki-metadata-create-user: semancik
+:page-wiki-metadata-create-date: 2012-04-17T18:32:42.796+02:00
+:page-wiki-metadata-modify-user: semancik
+:page-wiki-metadata-modify-date: 2019-08-27T15:11:47.967+02:00
+
+MidPoint can protect specific accounts against any change.
+Such accounts cannot be modified or deleted from midPoint, they will not be reconciled or otherwise synchronized.
+
+This feature is used to make sure that midPoint will not destroy vital accounts such as `root` or `administrator`.
+MidPoint is very flexible, using expressions and complex policies for provisioning.
+It may be easy to make a mistake and e.g. unintentionally disable such accounts.
+This may happen especially while the policies are constructed during midPoint deployment.
+Therefore midPoint provides a mechanism that limits possible impact of misconfiguration.
+This mechanism is called _protected accounts_.
+
+Protected accounts may be specified per resource and per object type.
+The definition is part of account definition in the `schemaHandling` section.
+Following code provides an example of such definition:
+
+[source,xml]
+----
+<resource>
+    ...
+    <schemaHandling>
+        ...
+        <objectType>
+            ...
+            <marking>
+                <markRef oid="00000000-0000-0000-0000-000000000800"/> <!-- protected -->
+                <pattern>
+                    <filter>
+                        <q:text>attributes/carLicense =[stringIgnoreCase] "ignoreme"</q:text>
+                    </filter>
+                </pattern>
+            </marking>
+            ...
+        </objectType>
+    </schemaHandling>
+</resource>
+----
+
+The above example will protect accounts with `carLicense` attribute equal to "ignoreme" string.
+
+[source,xml]
+----
+<resource>
+    ...
+    <schemaHandling>
+        ...
+        <objectType>
+            ...
+            <marking>
+                <markRef oid="00000000-0000-0000-0000-000000000800"/> <!-- protected -->
+                <pattern>
+                    <filter>
+                        <q:text>attributes/name endsWith[stringIgnoreCase] "ou=SUPERSECRET,dc=example,dc=com"</q:text>
+                    </filter>
+                </pattern>
+            </marking>
+            ...
+        </objectType>
+    </schemaHandling>
+</resource>
+----
+
+The final example will protect all accounts under "OU=SUPERSECRET,dc=example,dc=com" subtree.
+
+Protected accounts will be shown in midPoint, but such accounts will be clearly marked as protected.
+Any operation that attempts to modify or delete them will fail.
+Protected accounts will be ignored in import, live sync, reconciliation or any other synchronization mechanism.
+
+[TIP]
+.Why we need shadows for protected accounts?
+====
+Protected accounts are fetched into midPoint and there is a shadow for each protected account.
+MidPoint needs to be aware about protected accounts to know that the identifier belonging to the protected account is already taken.
+There are also other reasons e.g. to correctly display account lists in GUI, auditing and overall this is better for visibility into the IDM solution.
+====
+
+== See Also
+
+* xref:/midpoint/reference/resources/resource-configuration/[Resource Configuration]
+* xref:/midpoint/reference/concepts/mark/[Object Marks]

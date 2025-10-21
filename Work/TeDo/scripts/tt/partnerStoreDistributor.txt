@@ -1,0 +1,130 @@
+WITH
+-- 1. Проверка полноты (по количеству строк)
+psd_c1 AS (
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreDistributor pd
+        JOIN target_edw.distributorexternalcode de
+          ON pd.distributorID = de.distributorid
+         AND de.sourceid = 5
+    ) t
+),
+psd_c2 AS (
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.outletkey,
+            de.distributorid AS distributorID
+        FROM loading_dms."DimOutlet_" d
+        LEFT JOIN target_edw.distributorexternalcode de
+          ON de.externalid = d.DistributorKey
+         AND de.sourceid = 5
+    ) t
+),
+
+-- 2. Проверка наличия дубликатов
+psd_u1 AS (
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreDistributor pd
+        JOIN target_edw.distributorexternalcode de
+          ON pd.distributorID = de.distributorid
+         AND de.sourceid = 5
+    ) t
+),
+psd_u2 AS (
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.partnerStoreDistributor pd
+        JOIN target_edw.distributorexternalcode de
+          ON pd.distributorID = de.distributorid
+         AND de.sourceid = 5
+    ) t
+),
+
+-- 3. Проверка полноты построчно -- target -> staging
+psd_cfts AS (
+    SELECT pd.distributorID::TEXT
+    FROM target_edw.partnerStoreDistributor pd
+    JOIN target_edw.distributorexternalcode de
+      ON pd.distributorID = de.distributorid
+     AND de.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+           CAST(de2.distributorid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.distributorexternalcode de2
+      ON de2.externalid = d.DistributorKey
+     AND de2.sourceid = 5
+),
+psd_cftsr AS (
+    SELECT 'partner_store_distributor' AS table_name, COUNT(*) AS count
+    FROM psd_cfts
+),
+
+-- 4. Проверка полноты построчно -- staging -> target
+psd_cfst AS (
+    SELECT DISTINCT
+           CAST(de2.distributorid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.distributorexternalcode de2
+      ON de2.externalid = d.DistributorKey
+     AND de2.sourceid = 5
+    EXCEPT 
+    SELECT 
+           pd.distributorID::TEXT
+    FROM target_edw.partnerStoreDistributor pd
+    JOIN target_edw.distributorexternalcode de
+      ON pd.distributorID = de.distributorid
+     AND de.sourceid = 5
+),
+psd_cfstr AS (
+    SELECT 'partner_store_distributor' AS table_name, COUNT(*) AS count
+    FROM psd_cfst
+),
+
+-- 5. Проверка количества внешних кодов
+psd_ec1 AS (
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(DISTINCT pd.distributorid) AS count
+    FROM target_edw.partnerStoreDistributor pd
+    JOIN target_edw.distributorexternalcode de
+      ON pd.distributorID = de.distributorid
+     AND de.sourceid = 5
+),
+psd_ec2 AS (
+    -- Обновлённая проверка: берем уникальные distributorid из staging через join с distributorexternalcode,
+    -- чтобы получить именно то значение, которое используется при заполнении target.
+    SELECT 'partner_store_distributor' AS table_name,
+           COUNT(DISTINCT de2.distributorid) AS count
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.distributorexternalcode de2
+      ON de2.externalid = d.DistributorKey
+     AND de2.sourceid = 5
+),
+
+-- Сборка итогового результата
+psd AS (
+    SELECT
+        psd_c1.table_name,
+        CASE WHEN psd_c1.count = psd_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN psd_u1.count = psd_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN psd_cfstr.count = 0 AND psd_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN psd_ec1.count = psd_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM psd_c1
+    JOIN psd_c2  ON psd_c1.table_name = psd_c2.table_name
+    JOIN psd_u1  ON psd_c1.table_name = psd_u1.table_name
+    JOIN psd_u2  ON psd_c1.table_name = psd_u2.table_name
+    JOIN psd_cftsr ON psd_c1.table_name = psd_cftsr.table_name
+    JOIN psd_cfstr ON psd_c1.table_name = psd_cfstr.table_name
+    JOIN psd_ec1  ON psd_c1.table_name = psd_ec1.table_name
+    JOIN psd_ec2  ON psd_c1.table_name = psd_ec2.table_name
+)
+SELECT * FROM psd;

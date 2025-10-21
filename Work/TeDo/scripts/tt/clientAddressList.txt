@@ -1,0 +1,155 @@
+WITH
+-- 1. Проверка полноты (по количеству строк) в target
+clal_c1 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.clientAddressList cal
+        JOIN target_edw.clientexternalcode ce
+          ON cal.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+-- 2. Проверка полноты (по количеству строк) в источнике (staging)
+clal_c2 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.CustomerKey AS clientID,
+            COALESCE(d.CustomerTradingAddress, d.CustomerAddress) AS address,
+            d.StatusKey AS statusID
+        FROM loading_dms."DimCustomer" d
+    ) t
+),
+
+-- 3. Проверка наличия дубликатов в target
+clal_u1 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.clientAddressList cal
+        JOIN target_edw.clientexternalcode ce
+          ON cal.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+clal_u2 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.clientAddressList cal
+        JOIN target_edw.clientexternalcode ce
+          ON cal.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+
+-- 4. Проверка полноты построчно – target -> staging
+clal_cfts AS (
+    SELECT cal.clientID::TEXT,
+           cal.address::TEXT,
+           cal.statusID::TEXT
+    FROM target_edw.clientAddressList cal
+    JOIN target_edw.clientexternalcode ce
+      ON cal.clientID = ce.clientid
+     AND ce.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+           CAST(d.CustomerKey AS TEXT),
+           CAST(COALESCE(d.CustomerTradingAddress, d.CustomerAddress) AS TEXT),
+           CAST(d.StatusKey AS TEXT)
+    FROM loading_dms."DimCustomer" d
+),
+clal_cftsr AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM clal_cfts
+),
+
+-- 5. Проверка полноты построчно – staging -> target
+clal_cfst AS (
+    SELECT DISTINCT
+           CAST(d.CustomerKey AS TEXT),
+           CAST(COALESCE(d.CustomerTradingAddress, d.CustomerAddress) AS TEXT),
+           CAST(d.StatusKey AS TEXT)
+    FROM loading_dms."DimCustomer" d
+    EXCEPT 
+    SELECT 
+           cal.clientID::TEXT,
+           cal.address::TEXT,
+           cal.statusID::TEXT
+    FROM target_edw.clientAddressList cal
+    JOIN target_edw.clientexternalcode ce
+      ON cal.clientID = ce.clientid
+     AND ce.sourceid = 5
+),
+clal_cfstr AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(*) AS count
+    FROM clal_cfst
+),
+
+-- 6. Проверка количества внешних кодов (сравнение уникальных clientID)
+clal_ec1 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(DISTINCT cal.clientID) AS count
+    FROM target_edw.clientAddressList cal
+    JOIN target_edw.clientexternalcode ce
+      ON cal.clientID = ce.clientid
+     AND ce.sourceid = 5
+),
+clal_ec2 AS (
+    SELECT 'clientAddressList' AS table_name,
+           COUNT(DISTINCT d.CustomerKey) AS count
+    FROM loading_dms."DimCustomer" d
+),
+
+-- Итоговая сборка результата
+clal AS (
+    SELECT
+        clal_c1.table_name,
+        CASE WHEN clal_c1.count = clal_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN clal_u1.count = clal_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN clal_cfstr.count = 0 AND clal_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN clal_ec1.count = clal_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM clal_c1
+    JOIN clal_c2  ON clal_c1.table_name = clal_c2.table_name
+    JOIN clal_u1  ON clal_c1.table_name = clal_u1.table_name
+    JOIN clal_u2  ON clal_c1.table_name = clal_u2.table_name
+    JOIN clal_cftsr ON clal_c1.table_name = clal_cftsr.table_name
+    JOIN clal_cfstr ON clal_c1.table_name = clal_cfstr.table_name
+    JOIN clal_ec1  ON clal_c1.table_name = clal_ec1.table_name
+    JOIN clal_ec2  ON clal_c1.table_name = clal_ec2.table_name
+)
+SELECT * FROM clal;
+
+
+SELECT cal.clientID, cal.address, cal.statusID
+FROM target_edw.clientAddressList cal
+JOIN target_edw.clientexternalcode ce
+  ON cal.clientID = ce.clientid
+ AND ce.sourceid = 5
+EXCEPT
+SELECT
+    d.CustomerKey,
+    COALESCE(d.CustomerTradingAddress, d.CustomerAddress) AS address,
+    d.StatusKey
+FROM loading_dms."DimCustomer" d;
+
+
+SELECT
+    d.CustomerKey AS clientID,
+    COALESCE(d.CustomerTradingAddress, d.CustomerAddress) AS address,
+    d.StatusKey AS statusID
+FROM loading_dms."DimCustomer" d
+EXCEPT
+SELECT cal.clientID, cal.address, cal.statusID
+FROM target_edw.clientAddressList cal
+JOIN target_edw.clientexternalcode ce
+  ON cal.clientID = ce.clientid
+ AND ce.sourceid = 5;
+

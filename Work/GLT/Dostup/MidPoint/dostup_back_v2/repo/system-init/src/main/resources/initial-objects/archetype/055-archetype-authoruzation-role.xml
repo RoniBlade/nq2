@@ -1,0 +1,38 @@
+<!--
+  ~ Copyright (c) 2019 Evolveum and contributors
+  ~
+  ~ This work is dual-licensed under the Apache License 2.0
+  ~ and European Union Public License. See LICENSE file for details.
+  -->
+
+<archetype oid="d55f8b9b-5a21-4b7f-a971-2215f9b95b64"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+        xmlns:org='http://midpoint.evolveum.com/xml/ns/public/common/org-3'>
+<name>Authorization Role</name>
+<description>Роли для разграничения доступа к данным и экраном формам</description>
+ <archetypePolicy>
+<display>
+<label>Authorization Roles</label>
+<pluralLabel>Authorization Roles</pluralLabel>
+<icon>
+<cssClass>fa-solid fa-shuffle</cssClass>
+<color>red</color>
+</icon>
+</display>
+</archetypePolicy>
+<assignment>
+<assignmentRelation>
+<description>This archetype is applicable to roles.</description>
+<holderType>RoleType</holderType>
+</assignmentRelation>
+</assignment>
+<inducement>
+<assignmentRelation>
+<description>Any user can have business role (can be a member).</description>
+<holderType>UserType</holderType>
+<relation>org:default</relation>
+</assignmentRelation>
+</inducement>
+</archetype>

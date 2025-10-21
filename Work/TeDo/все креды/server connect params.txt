@@ -1,0 +1,16 @@
+    sql_server_conn_params = {
+        'server': '213.79.122.235',
+        'user': 'Cube_Campari_SQL',
+        'password': 'kCzFuO9vZo1c',
+        'database': 'Campari',
+        'port': 1433
+    }
+    
+    pg_conn_params = {
+        'dbname': 'postgres',
+        'user': 'superuser',
+        'password': 'rOGvBCBRDpsWIzyg4epLP7Ow',
+        'host': 'qas.PGsilver01.corp.camparirus.ru',
+        'port': '5432'
+    }
+    

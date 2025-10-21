@@ -1,0 +1,5 @@
+fastapi>=0.112
+uvicorn>=0.30
+python-multipart>=0.0.9  # для загрузки файлов через FormData
+pandas>=2.2
+numpy>=1.26

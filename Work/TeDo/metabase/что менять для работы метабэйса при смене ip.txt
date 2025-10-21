@@ -1,0 +1,4 @@
+LoginForm.tsx - в функции sendRequest, redirectUri
+webpack.config.js - config.output.publicPath
+security.clj - везде в Content-Security-Policy
+devtools.cljc - after-load on-reload

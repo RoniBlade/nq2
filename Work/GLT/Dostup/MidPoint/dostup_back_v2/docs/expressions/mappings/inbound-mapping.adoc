@@ -1,0 +1,130 @@
+= Inbound Mapping
+:page-wiki-name: Inbound Mapping
+:page-display-order: 520
+:page-wiki-id: 4423963
+:page-wiki-metadata-create-user: semancik
+:page-wiki-metadata-create-date: 2012-06-07T10:40:53.998+02:00
+:page-wiki-metadata-modify-user: dantrob
+:page-wiki-metadata-modify-date: 2019-08-28T17:18:26.192+02:00
+:page-upkeep-status: orange
+:page-toc: top
+
+
+== Introduction
+
+Inbound mapping is a xref:/midpoint/reference/expressions/mappings/[mapping] that transforms data from a xref:/midpoint/reference/schema/focus-and-projections/[projection] (e.g. an account) on the resource side to a xref:/midpoint/reference/schema/focus-and-projections/[focal object] (e.g. a user) on the midPoint side.
+Therefore it maps data in the direction which points _into_ midPoint.
+Hence _inbound_ mapping.
+Inbound mappings are usually used to copy and transform data from authoritative sources to midPoint.
+E.g. inbound mappings are often used to populate new user object with data from HR system.
+
+Please see the xref:/midpoint/reference/synchronization/introduction/[Synchronization] page for a generic description of the synchronization process and the specific place where inbound mappings are used.
+
+
+== Input
+
+Value constructions are sometimes used in situations where an input of the construction is quite obvious.
+In such cases the input is placed into a variable named `input` for easier use.
+This is common practice e.g. in inbound expressions or in expressions describing synchronization of account activation and password.
+
+.Expression constructor using input variable
+[source,xml]
+----
+<script>
+  <code>'The Mighty Pirate ' + input</code>
+</script>
+----
+
+
+== Associations
+
+Inbound mappings for associations are described in a xref:/midpoint/reference/resources/entitlements/#_inbound_mappings[separate document].
+
+== Range Of Inbound Mappings
+
+Inbound mappings have their range - as all the mappings have.
+Range is a set of possible values that a mapping can produce.
+This is an important tool to control which values are to be replaced by the mapping - or better to say, which values should be replaced.
+See xref:/midpoint/reference/expressions/mappings/[] page for the details.
+
+The default range of inbound mappings depend on the target item:
+
+[%autowidth]
+|===
+| Mapping target is | Default range | Which means ...
+
+| single-value
+| `all`
+| The target value will be replaced.
+This is nice and intuitive behavior for single-value items.
+This is also known as _non-tolerant_ behavior.
+
+
+.2+| multi-value
+| `none` for unnamed mappings
+| Target values will *not*  be replaced.
+This is safe behavior for multi-value items as the chance to delete something is lower.
+This is also consistent with other mappings, where the default range is empty.
+This is mostly intuitive for many multi-valued items, such as assignments - even though it may not be a natural fit everywhere.
+But it is consistent behavior, therefore it was chosen as a default.
+
+This is also known as _tolerant_ behavior.
+| `matchingProvenance` for named mappings
+| Only the target values that were previously provided by this mapping are replaced by it.
+
+|===
+
+The default behavior can be overridden by explicit definition of mapping range, as you can see on a following example.
+
+[source,xml]
+----
+<inbound>
+    ... sources, expression, etc.
+    <target>
+        <path>organization</path>
+        <set>
+            <predefined>all</predefined>
+        </set>
+    </target>
+</inbound>
+----
+
+See xref:/midpoint/reference/expressions/mappings/range[] page for a detailed discussion of mapping ranges.
+
+[TIP]
+.Motivation
+====
+The concept of range is not needed that often in other mappings.
+But it makes a lot of issues in inbound mappings.
+The reason for that is that inbound mappings are somehow different.
+They are not completely xref:/midpoint/reference/concepts/relativity/[relativistic].
+
+Typical midPoint mapping is working with a xref:/midpoint/devel/prism/concepts/deltas/[deltas].
+The mapping knows what was changed and the mapping takes a full advantage of that.
+Therefore it will normally not change the things that should not be changed.
+Therefore the definition of mapping range is not that important in such case.
+However, in inbound mappings we do not usually have a delta.
+We just have the state of the resource object (e.g. account) as it is now.
+We do not know what was changed.
+Therefore we have to recompute all the values.
+But the real difficulty here is to know which values to remove.
+E.g. if mapping target is an assignment, how do we know which assignments are given by this mapping and which are assigned automatically? The mapping should remove those that are given by the mapping, but it should not touch other assignments.
+This is exactly what range definition does.
+
+Fortunately, provenance-based range definition, which is the default for multi-valued targets and named mappings, provides a good solution here.
+====
+
+== Limitations
+
+When an account is deleted, or unlinked from the user, the inbound mappings are *not executed*.
+(An exception is an explicit and direct deletion of an account requested by the user.)
+This means that the values provided by the mapping previously are not removed when the account is gone.
+This is going to be resolved in the future.
+
+== See Also
+
+* xref:/midpoint/reference/expressions/mappings/[Mapping]
+
+* xref:/midpoint/reference/expressions/mappings/outbound-mapping/[Outbound Mapping]
+
+* xref:/midpoint/reference/synchronization/introduction/[Synchronization]

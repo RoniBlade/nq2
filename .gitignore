@@ -1,0 +1,23 @@
+# Игнорировать всё
+/*
+
+# Разрешить только нужные каталоги и gitignore
+!.gitignore
+!/JavaProjects/
+!/Notes/
+!/PyCharmProjects/
+!/Work/
+
+# Игнорировать внутренние гит-папки
+**/.git/
+**/not.notgit/
+
+# Игнорировать большие файлы и временные вещи
+*.csv
+*.zip
+*.rar
+*.7z
+*.bak
+*.tmp
+*.log
+*.cache

@@ -1,0 +1,130 @@
+WITH
+-- 1. Проверка полноты (по количеству строк)
+pso_c1 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreorgStructure pos
+        JOIN target_edw.orgstructureexternalcode ose
+          ON pos.orgStructureID = ose.orgstructureid
+         AND ose.sourceid = 5
+    ) t
+),
+pso_c2 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.outletkey,
+            ose.orgstructureid AS orgStructureID
+        FROM loading_dms."DimOutlet_" d
+        LEFT JOIN target_edw.orgstructureexternalcode ose
+          ON ose.externalid = d.OrgStructureKey
+         AND ose.sourceid = 5
+    ) t
+),
+
+-- 2. Проверка наличия дубликатов
+pso_u1 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreorgStructure pos
+        JOIN target_edw.orgstructureexternalcode ose
+          ON pos.orgStructureID = ose.orgstructureid
+         AND ose.sourceid = 5
+    ) t
+),
+pso_u2 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.partnerStoreorgStructure pos
+        JOIN target_edw.orgstructureexternalcode ose
+          ON pos.orgStructureID = ose.orgstructureid
+         AND ose.sourceid = 5
+    ) t
+),
+
+-- 3. Проверка полноты построчно -- target -> staging
+pso_cfts AS (
+    SELECT pos.orgStructureID::TEXT
+    FROM target_edw.partnerStoreorgStructure pos
+    JOIN target_edw.orgstructureexternalcode ose
+      ON pos.orgStructureID = ose.orgstructureid
+     AND ose.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+           CAST(ose2.orgstructureid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.orgstructureexternalcode ose2
+      ON ose2.externalid = d.OrgStructureKey
+     AND ose2.sourceid = 5
+),
+pso_cftsr AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM pso_cfts
+),
+
+-- 4. Проверка полноты построчно -- staging -> target
+pso_cfst AS (
+    SELECT DISTINCT
+           CAST(ose2.orgstructureid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.orgstructureexternalcode ose2
+      ON ose2.externalid = d.OrgStructureKey
+     AND ose2.sourceid = 5
+    EXCEPT 
+    SELECT 
+           pos.orgStructureID::TEXT
+    FROM target_edw.partnerStoreorgStructure pos
+    JOIN target_edw.orgstructureexternalcode ose
+      ON pos.orgStructureID = ose.orgstructureid
+     AND ose.sourceid = 5
+),
+pso_cfstr AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(*) AS count
+    FROM pso_cfst
+),
+
+-- 5. Проверка количества внешних кодов
+pso_ec1 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(DISTINCT pos.orgStructureID) AS count
+    FROM target_edw.partnerStoreorgStructure pos
+    JOIN target_edw.orgstructureexternalcode ose
+      ON pos.orgStructureID = ose.orgstructureid
+     AND ose.sourceid = 5
+),
+pso_ec2 AS (
+    SELECT 'partner_store_org_structure' AS table_name,
+           COUNT(DISTINCT ose2.orgstructureid) AS count
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.orgstructureexternalcode ose2
+      ON ose2.externalid = d.OrgStructureKey
+     AND ose2.sourceid = 5
+),
+
+-- Сборка итогового результата
+pso AS (
+    SELECT
+        pso_c1.table_name,
+        CASE WHEN pso_c1.count = pso_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN pso_u1.count = pso_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN pso_cfstr.count = 0 AND pso_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN pso_ec1.count = pso_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM pso_c1
+    JOIN pso_c2   ON pso_c1.table_name = pso_c2.table_name
+    JOIN pso_u1   ON pso_c1.table_name = pso_u1.table_name
+    JOIN pso_u2   ON pso_c1.table_name = pso_u2.table_name
+    JOIN pso_cftsr ON pso_c1.table_name = pso_cftsr.table_name
+    JOIN pso_cfstr ON pso_c1.table_name = pso_cfstr.table_name
+    JOIN pso_ec1  ON pso_c1.table_name = pso_ec1.table_name
+    JOIN pso_ec2  ON pso_c1.table_name = pso_ec2.table_name
+)
+SELECT * FROM pso;

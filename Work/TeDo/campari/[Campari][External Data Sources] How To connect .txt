@@ -1,0 +1,51 @@
+DMS 
+
+адрес campari.salesystems.ru 78.155.213.8 порт 20443
+
+БД SWE_Standard_Campari_DWH
+
+Login Campari
+Pass WKCTFX83@N~6z$~E
+
+
+Retail Expert
+
+Подключаемся с IP 185.53.105.10 к IP 213.79.122.235 port 1433
+
+Логин:Cube_Campari_SQL
+Пароль:kCzFuO9vZo1c
+
+Название базы Campari
+Название таблиц:
+Campari_K1_OLAP_  - тут факты
+Campari_K1_OLAP_SKU_ - тут справочники номенклатуры
+Campari_K1_OLAP_TT_ - тут справочники адресов
+ 
+ 
+Связи
+Campari_K1_OLAP_  [КодНоменклатураВх]  join Campari_K1_OLAP_SKU_ [НоменклатураВхКод]
+Campari_K1_OLAP_  [КодАдресВх] join Campari_K1_OLAP_TT_ [КлиентВхКод]
+
+
+
+
+Автоматика
+
+host: campari.automatica.ly
+port: 3306
+username: campari_tedo
+password: ag_o3iIa4dsO
+schema: campari
+Описание таблиц базы данных - https://docs.google.com/document/d/19JlxS87xbbOpZXwkXuzceBmyz5zvp92YBnMQfw6E6MU
+
+
+----------------------------
+Наша бд
+Доступ с etl к БД разрешен
+ 
+Параметры подключения:
+Адрес подключения: qas.PGsilver01.corp.camparirus.ru
+Пользователь: superuser (у пользователя права суперюзера)
+Пароль: rOGvBCBRDpsWIzyg4epLP7Ow
+Порт: 5432
+

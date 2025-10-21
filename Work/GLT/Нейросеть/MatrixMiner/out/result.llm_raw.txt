@@ -1,0 +1,38 @@
+{
+  "columns": {
+    "department": "Департамент",
+    "position": "Должность",
+    "employment": "Занятость",
+    "resource": "Название ресурса",
+    "roles": "Роли",
+    "user": "Имя пользователя",
+    "business_role": null
+  },
+  "roles_parse": {
+    "delimiters": [",", ";", "|"],
+    "normalize_case": "title",
+    "deduplicate": true,
+    "sort_alpha": true
+  },
+  "business_role_rule": {
+    "type": "generate",
+    "template": "{position}_{resource}_{department}",
+    "separator": "_"
+  },
+  "output_headers": {
+    "department": "Департамент",
+    "position": "Должность",
+    "employment": "Занятость",
+    "business_role": "Бизнес-роль",
+    "resource": "Название ресурса",
+    "role": "Роль"
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [],
+    "summary": {
+      "rows_seen": 5,
+      "columns_count": 6
+    }
+  }
+}

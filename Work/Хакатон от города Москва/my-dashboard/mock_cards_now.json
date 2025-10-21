@@ -1,0 +1,63 @@
+[
+  {
+    "id": 101,
+    "title": "Контур A",
+    "ts": "2025-09-29T15:30:00+02:00",
+    "sensorId": "hvs-ps1-001",
+    "currentState": "Важность: • Средняя",
+    "importance": "Средняя",
+    "confidence": 0.72,
+    "recommendation": "Уменьшить нагрузку на 5%, проверить давление в контуре",
+    "aiForecast": null,
+    "alarm": null,
+    "evidence": {
+      "value": 0.021,
+      "median": 0.012,
+      "upper": 0.018,
+      "z": 3.1
+    }
+  },
+  {
+    "id": 102,
+    "title": "Контур B",
+    "ts": "2025-09-29T15:29:00+02:00",
+    "sensorId": "odpu-ps1-001",
+    "currentState": null,
+    "importance": "Высокая",
+    "confidence": null,
+    "recommendation": null,
+    "aiForecast": {
+      "value": 0.78,
+      "note": "Вероятность утечки"
+    },
+    "alarm": "Падение давления",
+    "evidence": {
+      "dT": {
+        "value": 8.1,
+        "median": 13.4
+      },
+      "consumption": 0.04
+    }
+  },
+  {
+    "id": 103,
+    "title": "Контур C",
+    "ts": "2025-09-29T15:28:00+02:00",
+    "sensorId": "hvs-ps1-002",
+    "currentState": "Важность: • Низкая",
+    "importance": "Низкая",
+    "confidence": 0.34,
+    "recommendation": "Наблюдать. Пересчитать норму через час",
+    "aiForecast": {
+      "value": 0.12,
+      "note": "Норма"
+    },
+    "alarm": null,
+    "evidence": {
+      "value": 0.006,
+      "median": 0.007,
+      "upper": 0.015,
+      "z": -0.4
+    }
+  }
+]

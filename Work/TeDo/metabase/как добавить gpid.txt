@@ -1,0 +1,27 @@
+файл LoginForm.tsx - 
+в схеме валидации Yup указать новое поле external_id
+в компоненте LoginForm добавить поле external_id
+добавить в Form новое поле - GPID
+
+в файле types.ts - 
+добавить в интэрфэйс LoginData поле external_id
+
+далее идет передача данных в родителя(PasswordPanel), оттуда в actions.ts(для обращения к бэкэнду)
+
+
+Далее менять логику в бэке в файле session.clj
+
+вот этот метод
+(api/defendpoint POST "/"
+  "Login."
+
+тут нужно добавить добавление id и gpid в доп таблицу
+
+потом нужно будет при регистрации поменять логику немного
+
+и в целом все
+
+
+создать модель core_user_external.clj
+изменить метод api
+добавить функцию find-or-create-core-user-external

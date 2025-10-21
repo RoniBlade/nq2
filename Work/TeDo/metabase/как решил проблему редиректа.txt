@@ -1,0 +1,3 @@
+frontend\src\metabase\auth\actions.ts
+
+в этом файле для Login убрать в блоке catch rejectWithValue(error);

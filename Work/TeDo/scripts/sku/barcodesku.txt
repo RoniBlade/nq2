@@ -1,0 +1,101 @@
+WITH
+-- проверка таблицы barcodesku
+-- блок проверки полноты по количеству
+        bs_c1 AS (SELECT 'barcodesku' AS table_name, COUNT(*) 
+                  FROM (SELECT * FROM target_edw.barcodesku b
+                        JOIN target_edw.skuexternalcode s ON b.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        bs_c2 AS (SELECT 'barcodesku' AS table_name, COUNT(*)
+                  FROM (SELECT DISTINCT s.externalid, b.barcode
+                        FROM loading_dms."DimProduct_" d
+                        JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+                        JOIN target_edw.barcodesku b ON b.skuid = s.skuid
+                        WHERE d.ProductEANCode IS NOT NULL AND d.ProductEANCode <> 'Undef'
+                       )
+                 ),
+-- блок проверки наличия дубликатов
+        bs_u1 AS (SELECT 'barcodesku' AS table_name, COUNT(*)
+                  FROM (SELECT * FROM target_edw.barcodesku b
+                        JOIN target_edw.skuexternalcode s ON b.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        bs_u2 AS (SELECT 'barcodesku' AS table_name, COUNT(*)
+                  FROM (SELECT DISTINCT * FROM target_edw.barcodesku b
+                        JOIN target_edw.skuexternalcode s ON b.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        -- Блок проверки полноты построчно -- target -> staging
+        bs_cfts AS (
+            SELECT b.skuid::TEXT, b.barcode::TEXT 
+            FROM target_edw.barcodesku b
+            JOIN target_edw.skuexternalcode s 
+                ON b.skuid = s.skuid AND s.sourceid = 5
+            EXCEPT 
+            SELECT DISTINCT s.skuid::TEXT, d.ProductEANCode::TEXT
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.ProductKey AND s.sourceid = 5
+            WHERE d.ProductEANCode IS NOT NULL AND d.ProductEANCode <> 'Undef'
+        ),
+        bs_cftsr AS (
+            SELECT 'barcodesku' AS table_name, COUNT(*) 
+            FROM bs_cfts
+        ),
+
+         -- Блок проверки полноты построчно -- staging -> target
+        bs_cfst AS (
+            SELECT DISTINCT s.skuid::TEXT, d.ProductEANCode::TEXT
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.ProductKey AND s.sourceid = 5
+            WHERE d.ProductEANCode IS NOT NULL AND d.ProductEANCode <> 'Undef'
+            EXCEPT 
+            SELECT b.skuid::TEXT, b.barcode::TEXT 
+            FROM target_edw.barcodesku b
+            JOIN target_edw.skuexternalcode s 
+                ON b.skuid = s.skuid AND s.sourceid = 5
+        ),
+        bs_cfstr AS (
+            SELECT 'barcodesku' AS table_name, COUNT(*) 
+            FROM bs_cfst
+        ),
+        -- Проверка количества external кодов
+        bs_ec1 AS (
+            SELECT 'barcodesku' AS table_name, COUNT(DISTINCT b.skuid) 
+            FROM target_edw.barcodesku b
+            JOIN target_edw.skuexternalcode s 
+                ON b.skuid = s.skuid AND s.sourceid = 5
+        ),
+        bs_ec2 AS (
+            SELECT 'barcodesku' AS table_name, COUNT(DISTINCT d.ProductKey) 
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.ProductKey AND s.sourceid = 5
+            WHERE d.ProductEANCode IS NOT NULL AND d.ProductEANCode <> 'Undef'
+        ),
+-- сборка вывода
+        bs AS (SELECT 
+                bs_c1.table_name,
+                CASE 
+                    WHEN bs_c1.count = bs_c2.count THEN 'done'
+                    ELSE 'fail'
+                END AS completness,
+                CASE 
+                    WHEN bs_u1.count = bs_u2.count THEN 'done'
+                    ELSE 'fail'
+                END AS unique,
+                CASE 
+                    WHEN bs_cfstr.count = 0 AND bs_cftsr.count = 0 THEN 'done'
+                    ELSE 'fail'
+                END AS "completeness per row",
+                CASE 
+                    WHEN bs_ec1.count = bs_ec2.count THEN 'done'
+                    ELSE 'fail'
+                END AS "external code check"
+              FROM bs_c1
+              JOIN bs_c2 ON bs_c1.table_name = bs_c2.table_name
+              JOIN bs_u1 ON bs_c1.table_name = bs_u1.table_name
+              JOIN bs_u2 ON bs_c1.table_name = bs_u2.table_name
+              JOIN bs_cftsr ON bs_c1.table_name = bs_cftsr.table_name
+              JOIN bs_cfstr ON bs_c1.table_name = bs_cfstr.table_name
+              JOIN bs_ec1 ON bs_c1.table_name = bs_ec1.table_name
+              JOIN bs_ec2 ON bs_c1.table_name = bs_ec2.table_name)
+SELECT * FROM bs;

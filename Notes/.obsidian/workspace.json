@@ -1,0 +1,203 @@
+{
+  "main": {
+    "id": "198b0ba0f2eb24f8",
+    "type": "split",
+    "children": [
+      {
+        "id": "515512ef3b590364",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "628320c0190061c9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "ЧЕК-ЛИСТ ПО ИЗУЧЕНИЮ АЛГОРИТМОВ.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ЧЕК-ЛИСТ ПО ИЗУЧЕНИЮ АЛГОРИТМОВ"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "01f7c0e7245a7164",
+    "type": "split",
+    "children": [
+      {
+        "id": "99cd9b03b2d7282c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d1ec362244364c79",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Файловый менеджер"
+            }
+          },
+          {
+            "id": "8dc3840be7fbdbee",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Поиск"
+            }
+          },
+          {
+            "id": "a63614399f626096",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Закладки"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "68b6670352ac8a96",
+    "type": "split",
+    "children": [
+      {
+        "id": "5892d9af6179ae6e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7a3e0120bc776896",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Anti-money laundering bitch.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Обратные ссылки для Anti-money laundering bitch"
+            }
+          },
+          {
+            "id": "262c845e626ea6e5",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Anti-money laundering bitch.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Исходящие ссылки из Anti-money laundering bitch"
+            }
+          },
+          {
+            "id": "2eac63f727f2c029",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              },
+              "icon": "lucide-tags",
+              "title": "Теги"
+            }
+          },
+          {
+            "id": "b7923b5814a4c487",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Anti-money laundering bitch.md"
+              },
+              "icon": "lucide-list",
+              "title": "Структура Anti-money laundering bitch"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Создать новую базу": false,
+      "switcher:Меню быстрого перехода": false,
+      "graph:Граф": false,
+      "canvas:Создать новый холст": false,
+      "daily-notes:Сегодняшняя заметка": false,
+      "templates:Вставить шаблон": false,
+      "command-palette:Открыть палитру команд": false
+    }
+  },
+  "active": "d1ec362244364c79",
+  "lastOpenFiles": [
+    "Подготовка к собеседованию.md",
+    "Основные советы при создании бизнеса.md",
+    "ЧЕК-ЛИСТ ПО ИЗУЧЕНИЮ АЛГОРИТМОВ.md",
+    "Connector Review.md",
+    "2М/Инвестиции.md",
+    "2М/Достижения для работы.md",
+    "2М/03_План_роста_дохода.md",
+    "2М/00_Зачем_я_это_делаю.md",
+    "Календарь.md",
+    "Задачи.md",
+    "Чек лист для проверки идеи.md",
+    "Инструкция.md",
+    "Connector Review 1.md",
+    "Без названия",
+    "Заметки по разработке чат-бота.md",
+    "Инструкция к VPN расширение в браузере.md",
+    "План.md",
+    "Pasted image 20250630193843.png",
+    "Рефакторинг.md",
+    "📁 Путь к 2М/journal/07.05.2025.md",
+    "📁 Путь к 2М/02_Соревнование.md",
+    "📁 Путь к 2М/01_Дневник_действий.md",
+    "📁 Путь к 2М/journal",
+    "📁 Путь к 2М/Сильные действия.md",
+    "2М",
+    "Что делал.md",
+    "Как запускать прогу.md",
+    "Саморазвитие/Дневник задач.md",
+    "prod-etl01camparirusloc.md",
+    "Чек лист.md",
+    "Саморазвитие",
+    "image-5.png",
+    "Pasted image 20241030104445.png"
+  ]
+}

@@ -1,0 +1,162 @@
+WITH
+-- 1. Проверка полноты (по количеству строк) для target
+cl_c1 AS (
+    SELECT 'client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.client c
+        JOIN target_edw.clientexternalcode ce 
+          ON c.id = ce.clientid AND ce.sourceid = 5
+        JOIN target_edw.statusexternalcode se 
+          ON c.statusid = se.id AND se.sourceid = 5
+        JOIN target_edw.distributorexternalcode de 
+          ON c.distributorid = de.distributorid AND de.sourceid = 5
+    ) t
+),
+-- 2. Проверка полноты (по количеству строк) для staging
+cl_c2 AS (
+    SELECT 'client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.CustomerKey,
+            d.CustomerExtendedName AS fullname,
+            d.CustomerName AS shortname,
+            d.CustomerTradingName AS legalname,
+            se2.id AS statusid,
+            de2.distributorid AS distributorid,
+            ce2.clientid AS id
+        FROM loading_dms."DimCustomer" d
+        LEFT JOIN target_edw.clientexternalcode ce2 
+          ON ce2.externalid = d.CustomerKey AND ce2.sourceid = 5
+        LEFT JOIN target_edw.statusexternalcode se2 
+          ON se2.externalid = d.StatusKey AND se2.sourceid = 5
+        LEFT JOIN target_edw.distributorexternalcode de2 
+          ON de2.externalid = d.DistributorKey AND de2.sourceid = 5
+    ) t
+),
+-- 3. Проверка наличия дубликатов в target
+cl_u1 AS (
+    SELECT 'client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.client c
+        JOIN target_edw.clientexternalcode ce 
+          ON c.id = ce.clientid AND ce.sourceid = 5
+        JOIN target_edw.statusexternalcode se 
+          ON c.statusid = se.id AND se.sourceid = 5
+        JOIN target_edw.distributorexternalcode de 
+          ON c.distributorid = de.distributorid AND de.sourceid = 5
+    ) t
+),
+cl_u2 AS (
+    SELECT 'client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.client c
+        JOIN target_edw.clientexternalcode ce 
+          ON c.id = ce.clientid AND ce.sourceid = 5
+        JOIN target_edw.statusexternalcode se 
+          ON c.statusid = se.id AND se.sourceid = 5
+        JOIN target_edw.distributorexternalcode de 
+          ON c.distributorid = de.distributorid AND de.sourceid = 5
+    ) t
+),
+-- 4. Проверка полноты построчно – target -> staging
+cl_cfts AS (
+    SELECT 
+         c.fullname::TEXT,
+         c.shortname::TEXT,
+         c.legalname::TEXT,
+         c.statusid::TEXT,
+         c.distributorid::TEXT
+    FROM target_edw.client c
+    JOIN target_edw.clientexternalcode ce 
+      ON c.id = ce.clientid AND ce.sourceid = 5
+    JOIN target_edw.statusexternalcode se 
+      ON c.statusid = se.id AND se.sourceid = 5
+    JOIN target_edw.distributorexternalcode de 
+      ON c.distributorid = de.distributorid AND de.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+         CAST(d.CustomerExtendedName AS TEXT),
+         CAST(d.CustomerName AS TEXT),
+         CAST(d.CustomerTradingName AS TEXT),
+         CAST(se2.id AS TEXT),
+         CAST(de2.distributorid AS TEXT)
+    FROM loading_dms."DimCustomer" d
+    LEFT JOIN target_edw.statusexternalcode se2 
+      ON se2.externalid = d.StatusKey AND se2.sourceid = 5
+    LEFT JOIN target_edw.distributorexternalcode de2 
+      ON de2.externalid = d.DistributorKey AND de2.sourceid = 5
+),
+cl_cftsr AS (
+    SELECT 'client' AS table_name, COUNT(*) AS count
+    FROM cl_cfts
+),
+-- 5. Проверка полноты построчно – staging -> target
+cl_cfst AS (
+    SELECT DISTINCT
+         CAST(se2.id AS TEXT),
+         CAST(de2.distributorid AS TEXT),
+         CAST(d.CustomerExtendedName AS TEXT),
+         CAST(d.CustomerName AS TEXT),
+         CAST(d.CustomerTradingName AS TEXT)
+    FROM loading_dms."DimCustomer" d
+    LEFT JOIN target_edw.statusexternalcode se2 
+      ON se2.externalid = d.StatusKey AND se2.sourceid = 5
+    LEFT JOIN target_edw.distributorexternalcode de2 
+      ON de2.externalid = d.DistributorKey AND de2.sourceid = 5
+    EXCEPT 
+    SELECT 
+         c.statusid::TEXT,
+         c.distributorid::TEXT,
+         c.fullname::TEXT,
+         c.shortname::TEXT,
+         c.legalname::TEXT
+    FROM target_edw.client c
+    JOIN target_edw.clientexternalcode ce 
+      ON c.id = ce.clientid AND ce.sourceid = 5
+    JOIN target_edw.statusexternalcode se 
+      ON c.statusid = se.id AND se.sourceid = 5
+    JOIN target_edw.distributorexternalcode de 
+      ON c.distributorid = de.distributorid AND de.sourceid = 5
+),
+cl_cfstr AS (
+    SELECT 'client' AS table_name, COUNT(*) AS count
+    FROM cl_cfst
+),
+-- 6. Проверка количества внешних кодов
+cl_ec1 AS (
+    SELECT 'client' AS table_name,
+           COUNT(DISTINCT c.id) AS count
+    FROM target_edw.client c
+    JOIN target_edw.clientexternalcode ce 
+      ON c.id = ce.clientid AND ce.sourceid = 5
+),
+cl_ec2 AS (
+    SELECT 'client' AS table_name,
+           COUNT(DISTINCT d.CustomerKey) AS count
+    FROM loading_dms."DimCustomer" d
+),
+-- Итоговая сборка результата
+cl AS (
+    SELECT
+        cl_c1.table_name,
+        CASE WHEN cl_c1.count = cl_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN cl_u1.count = cl_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN cl_cfstr.count = 0 AND cl_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN cl_ec1.count = cl_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM cl_c1
+    JOIN cl_c2  ON cl_c1.table_name = cl_c2.table_name
+    JOIN cl_u1  ON cl_c1.table_name = cl_u1.table_name
+    JOIN cl_u2  ON cl_c1.table_name = cl_u2.table_name
+    JOIN cl_cftsr ON cl_c1.table_name = cl_cftsr.table_name
+    JOIN cl_cfstr ON cl_c1.table_name = cl_cfstr.table_name
+    JOIN cl_ec1  ON cl_c1.table_name = cl_ec1.table_name
+    JOIN cl_ec2  ON cl_c1.table_name = cl_ec2.table_name
+)
+SELECT * FROM cl;

@@ -1,0 +1,54 @@
+constants.ts - тут находятся данные, которые нам нужны для окты
+metabase\frontend\src\metabase\admin\settings\auth
+
+settings.ts - сюда надо добавить поля для okta
+  "okta-domain": string | null;
+  "okta-auth-client-id": string | null;
+  "okta-auth-configured": boolean;
+  "okta-auth-enabled": boolean;
+  "okta-issuer": string | null
+
+metabase\frontend\src\metabase\admin\settings\auth\components\GoogleAuthForm - GoogleAuthForm.tsx
+
+изменил на 
+
+const ENABLED_KEY = "okta-auth-enabled";
+const CLIENT_ID_KEY = "okta-auth-client-id";
+const DOMAIN_KEY = "okta-auth-auto-create-accounts-domain";
+
+было для гугла
+
+metabase\frontend\src\metabase-types\api
+
+В файле metabase\frontend\src\metabase\admin\settings\auth\containers\GoogleAuthCard\GoogleAuthCard.tsx
+
+нужно использовать OKTA_SCHEMA
+
+А объявить ее можно в frontend\src\metabase\admin\settings\auth\constants.ts
+
+нужно добавить вытягивание данных из настроек и добавить флаг - вкл\выкл
+
+Посмотреть еще metabase/lib/settings - MetabaseSettings
+
+
+
+файлы, которые связаны
+
+settings.ts - frontend\src\metabase-types\api\settings.ts
+GoogleAuthCard.tsx - frontend\src\metabase\admin\settings\auth\containers\GoogleAuthCard\GoogleAuthCard.tsx
+// Проверить появится ли новая карточка авторизации в настройках, если создать новую
+constants.ts - frontend\src\metabase\admin\settings\auth\constants.ts
+//Здесь хранятся схемы валидации
+GoogleAuthForm.tsx - frontend\src\metabase\admin\settings\auth\components\GoogleAuthForm\GoogleAuthForm.tsx
+//Сама валидация и форма в которую вносим информацию лежат тут, но при этом идет отправка на сервер и там есть доп валидация
+//то есть еще два файла, а именно src\metabase\integrations\google.clj и src\metabase\api\google.clj
+
+Цель - поменять все для гугла так, чтобы работало для Окта, потом уже если будет время сделать для Окта отдельно
+
+понять как генерируется страница и ее путь
+
+
+
+для того чтобы поменять путь тут указываем путь frontend\src\metabase\plugins\builtin\auth\google.js
+
+если все сработает, то нужно поменять только session и loginform(и добавить пару селекторов)

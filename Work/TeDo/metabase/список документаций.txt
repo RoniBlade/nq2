@@ -1,0 +1,11 @@
+1) LoginForm + 
+1.1) Настройки + 
+2) OktaCallbackHandler +
+3) User.clj(API) + 
+4) Методы session +
+5) Изменение логотипа +
+6) Изменение БД +
+7) Изменения в фронте для обновления настроек + 
+ 7.1) GoogleAuthCard +
+ 7.2) GoogleAuthForm +
+8) google.clj +

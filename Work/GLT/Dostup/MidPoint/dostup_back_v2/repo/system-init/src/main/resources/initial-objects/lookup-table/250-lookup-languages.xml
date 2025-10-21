@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2017 Evolveum, AMI Praha and contributors
+  ~
+  ~ This work is dual-licensed under the Apache License 2.0
+  ~ and European Union Public License. See LICENSE file for details.
+  -->
+
+<lookupTable oid="00000000-0000-0000-0000-000000000250"
+        xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>
+
+    <name>Language_ru</name>
+
+    <description>
+        Lookup table for languages directly supported by midPoint.
+        This lookup table contains language codes that are supported by
+        midPoint product localizations. The idea is that only the list of
+        supported languages will be presented to midPoint user.
+        For full list of language code please see lookup-languages-all.xml
+        in midPoint samples.
+    </description>
+    <row id="61">
+        <key>app.Access Management Portal</key>
+        <label>Портал управления доступами</label>
+    </row>
+    <row id="103">
+        <key>app.Access requests</key>
+        <label>Заявки на доступ</label>
+    </row>
+    <row id="64">
+        <key>app.Application approval</key>
+        <label>Согласование заявки</label>
+    </row>
+    <row id="66">
+        <key>app.Application Rejection</key>
+        <label>Отклонение заявки</label>
+    </row>
+    <row id="65">
+        <key>app.Are you sure you want to approve access rights for the user?</key>
+        <label>Вы уверены что хотите согласовать предоставление прав доступа для пользователя?</label>
+    </row>
+    <row id="67">
+        <key>app.Are you sure you want to reject the request to grant access rights to the user?</key>
+        <label>Вы уверены что хотите отклонить заявку на предоставление прав доступа для пользователя?</label>
+    </row>
+    <row id="94">
+        <key>app.assignment</key>
+        <label>Назначение</label>
+    </row>
+    <row id="72">
+        <key>app.Attached file</key>
+        <label>Приложенный файл</label>
+    </row>
+    <row id="58">
+        <key>app.Audit</key>
+        <label>Аудит</label>
+    </row>
+    <row id="51">
+        <key>app.Catalog of applications</key>
+        <label>Каталог заявок</label>
+    </row>
+    <row id="73">
+        <key>app.Comment from the approver</key>
+        <label>Комментарий согласующего</label>
+    </row>
+    <row id="43">
+        <key>app.Copy accesses</key>
+        <label>Копировать доступы</label>
+    </row>
+    <row id="44">
+        <key>app.Copy_accesses_text</key>
+        <label>Запускает мастер заявок, для полного, или частичного копирования прав с одного сотрудника на другого</label>
+    </row>
+    <row id="92">
+        <key>app.Detailed information</key>
+        <label>Подробная информация</label>
+    </row>
+    <row id="68">
+        <key>app.Detailed information on the application</key>
+        <label>Подробная информация по заявке</label>
+    </row>
+    <row id="60">
+        <key>app.Exit</key>
+        <label>Выход</label>
+    </row>
+    <row id="71">
+        <key>app.Expiration date</key>
+        <label>Дата окончания действия прав</label>
+    </row>
+    <row id="49">
+        <key>app.Go to</key>
+        <label>Перейти</label>
+    </row>
+    <row id="52">
+        <key>app.I need approval</key>
+        <label>Мне на согласование</label>
+    </row>
+    <row id="69">
+        <key>app.Justification of necessity</key>
+        <label>Обоснование необходимости</label>
+    </row>
+    <row id="55">
+        <key>app.Knowledge Base</key>
+        <label>База знаний</label>
+    </row>
+    <row id="45">
+        <key>app.Manager's office</key>
+        <label>Кабинет руководителя</label>
+    </row>
+    <row id="46">
+        <key>app.Manager's_office_text</key>
+        <label>Содержит сведения о структурных единицах, подчиненых и их правах доступа к целевым ресурсам</label>
+    </row>
+    <row id="53">
+        <key>app.My requests</key>
+        <label>Мои заявки</label>
+    </row>
+    <row id="41">
+        <key>app.New application</key>
+        <label>Новая заявка</label>
+    </row>
+    <row id="42">
+        <key>app.New_application_text</key>
+        <label>Запускает пустой мастер заявок, для формирования запросов на предоставление прав доступа к целевым системам</label>
+    </row>
+    <row id="56">
+        <key>app.Personal information</key>
+        <label>Персональная информация</label>
+    </row>
+    <row id="74">
+        <key>app.Please provide a comment on the approval or reason for denying the request for access rights</key>
+        <label>Укажите комментарий согласования или причину отклонения запроса на предоставление прав доступа</label>
+    </row>
+    <row id="54">
+        <key>app.Recertification</key>
+        <label>Ресертификация</label>
+    </row>
+    <row id="57">
+        <key>app.Reports</key>
+        <label>Отчеты</label>
+    </row>
+    <row id="48">
+        <key>app.Resource Certification</key>
+        <label>Аттестация ресурсов</label>
+    </row>
+    <row id="47">
+        <key>app.Resource_Certification_text</key>
+        <label>Запускает процесс, который позволяет подтвердить доступы к ресурсам, владельцем которых вы являетесь</label>
+    </row>
+    <row id="50">
+        <key>app.Search</key>
+        <label>Поиск</label>
+    </row>
+    <row id="40">
+        <key>app.Search by application catalog and keywords</key>
+        <label>Поиск по каталогу заявок и ключевым словам</label>
+    </row>
+    <row id="70">
+        <key>app.Start date of rights</key>
+        <label>Дата начала действия прав</label>
+    </row>
+    <row id="63">
+        <key>app.There are no applications for approval</key>
+        <label>Нет заявок для согласования</label>
+    </row>
+    <row id="62">
+        <key>app.title</key>
+        <label>Доступ</label>
+    </row>
+    <row id="39">
+        <key>app.welcome</key>
+        <label>Добро пожаловать, {{userIO}}!</label>
+    </row>
+    <row id="59">
+        <key>app.Workflows</key>
+        <label>Рабочие процессы</label>
+    </row>
+    <row id="19">
+        <key>AuditEventTypeType.ADD_OBJECT</key>
+        <label>Добавление объекта</label>
+    </row>
+    <row id="24">
+        <key>AuditEventTypeType.CREATE_SESSION</key>
+        <label>Создание сессии</label>
+    </row>
+    <row id="21">
+        <key>AuditEventTypeType.DELETE_OBJECT</key>
+        <label>Удаление объекта</label>
+    </row>
+    <row id="32">
+        <key>AuditEventTypeType.DISCOVER_OBJECT</key>
+        <label>Обноружение объекта</label>
+    </row>
+    <row id="22">
+        <key>AuditEventTypeType.EXECUTE_CHANGES_RAW</key>
+        <label>Выполнение изменений формата</label>
+    </row>
+    <row id="18">
+        <key>AuditEventTypeType.GET_OBJECT</key>
+        <label>Чтение объекта</label>
+    </row>
+    <row id="33">
+        <key>AuditEventTypeType.INFORMATION_DISCLOSURE</key>
+        <label>Раскрытие информации</label>
+    </row>
+    <row id="20">
+        <key>AuditEventTypeType.MODIFY_OBJECT</key>
+        <label>Изменение объекта</label>
+    </row>
+    <row id="28">
+        <key>AuditEventTypeType.RECONCILIATION</key>
+        <label>Сверка</label>
+    </row>
+    <row id="30">
+        <key>AuditEventTypeType.RESUME_TASK</key>
+        <label>Возобновление задачи</label>
+    </row>
+    <row id="31">
+        <key>AuditEventTypeType.RUN_TASK_IMMEDIATELY</key>
+        <label>Немедленный запуск задачи</label>
+    </row>
+    <row id="29">
+        <key>AuditEventTypeType.SUSPEND_TASK</key>
+        <label>Приостановка задачи</label>
+    </row>
+    <row id="23">
+        <key>AuditEventTypeType.SYNCHRONIZATION</key>
+        <label>Синхронизация</label>
+    </row>
+    <row id="25">
+        <key>AuditEventTypeType.TERMINATE_SESSION</key>
+        <label>Завершение сеанса</label>
+    </row>
+    <row id="27">
+        <key>AuditEventTypeType.WORKFLOW_PROCESS_INSTANCE</key>
+        <label>Собитие рабочего процесса</label>
+    </row>
+    <row id="26">
+        <key>AuditEventTypeType.WORK_ITEM</key>
+        <label>Событие элемента рабочего процесса</label>
+    </row>
+    <row id="83">
+        <key>button.Approve</key>
+        <label>Согласовать</label>
+    </row>
+    <row id="82">
+        <key>button.Cancel</key>
+        <label>Отмена</label>
+    </row>
+    <row id="85">
+        <key>button.Confirm</key>
+        <label>Подтвердить</label>
+    </row>
+    <row id="86">
+        <key>button.Delegate</key>
+        <label>Делегировать</label>
+    </row>
+    <row id="84">
+        <key>button.Reject</key>
+        <label>Отклонить</label>
+    </row>
+    <row id="81">
+        <key>column.createTimestamp</key>
+        <label>Дата и время создания заявки</label>
+    </row>
+    <row id="75">
+        <key>column.oid</key>
+        <label>Номер</label>
+    </row>
+    <row id="79">
+        <key>column.OrderDate</key>
+        <label>Дата запроса</label>
+    </row>
+    <row id="78">
+        <key>column.Requestor</key>
+        <label>Инициатор заявки</label>
+    </row>
+    <row id="76">
+        <key>column.RoleName</key>
+        <label>Наименование роли</label>
+    </row>
+    <row id="80">
+        <key>column.type</key>
+        <label>Тип заявки</label>
+    </row>
+    <row id="77">
+        <key>column.UserName</key>
+        <label>Получатель</label>
+    </row>
+    <row id="101">
+        <key>main.delegable</key>
+        <label>Делегируемый</label>
+    </row>
+    <row id="97">
+        <key>main.description</key>
+        <label>Описание</label>
+    </row>
+    <row id="98">
+        <key>main.displayName</key>
+        <label>Отображаемое имя</label>
+    </row>
+    <row id="88">
+        <key>main.eventstage</key>
+        <label>Состояние</label>
+    </row>
+    <row id="37">
+        <key>main.eventtype</key>
+        <label>Тип события</label>
+    </row>
+    <row id="89">
+        <key>main.from</key>
+        <label>Дата с</label>
+    </row>
+    <row id="87">
+        <key>main.initiatorref</key>
+        <label>Инициатор</label>
+    </row>
+    <row id="99">
+        <key>main.iteration</key>
+        <label>Итерация</label>
+    </row>
+    <row id="96">
+        <key>main.name</key>
+        <label>Наименование</label>
+    </row>
+    <row id="36">
+        <key>main.outcome</key>
+        <label>Результат выполнения</label>
+    </row>
+    <row id="100">
+        <key>main.requestable</key>
+        <label>Запрашиваемый</label>
+    </row>
+    <row id="38">
+        <key>main.Select values</key>
+        <label>Выберите значения</label>
+    </row>
+    <row id="102">
+        <key>main.stageNumber</key>
+        <label>Этап</label>
+    </row>
+    <row id="91">
+        <key>main.targetref</key>
+        <label>Целевой объект</label>
+    </row>
+    <row id="90">
+        <key>main.to</key>
+        <label>Дата по</label>
+    </row>
+    <row id="10">
+        <key>OperationResultStatusType.FATAL_ERROR</key>
+        <label>Серьёзная ошибка</label>
+    </row>
+    <row id="11">
+        <key>OperationResultStatusType.HANDLED_ERROR</key>
+        <label>Обработанная ошибка</label>
+    </row>
+    <row id="12">
+        <key>OperationResultStatusType.IN_PROGRESS</key>
+        <label>В процессе</label>
+    </row>
+    <row id="13">
+        <key>OperationResultStatusType.NOT_APPLICABLE</key>
+        <label>Не исправен</label>
+    </row>
+    <row id="14">
+        <key>OperationResultStatusType.PARTIAL_ERROR</key>
+        <label>Частичная ошибка</label>
+    </row>
+    <row id="15">
+        <key>OperationResultStatusType.SUCCESS</key>
+        <label>Успешно</label>
+    </row>
+    <row id="16">
+        <key>OperationResultStatusType.UNKNOWN</key>
+        <label>Не определён</label>
+    </row>
+    <row id="17">
+        <key>OperationResultStatusType.WARNING</key>
+        <label>Предупреждение</label>
+    </row>
+    <row id="93">
+        <key>targetRef.status</key>
+        <label>Cтатус назначения</label>
+    </row>
+    <row id="95">
+        <key>targetRef.type</key>
+        <label>Тип целевого объекта</label>
+    </row>
+    <row id="104">
+        <key>app.Enter login</key>
+        <label>Введите логин</label>
+    </row>
+    <row id="174">
+        <key>mess.Need to add steps to the workflow</key>
+        <label>Необходимо добавить этапы в рабочий процесс</label>
+    </row>
+    <row id="158">
+        <key>mess.The employee has been successfully added to the application</key>
+        <label>Работник успешно добавлен в заявку</label>
+    </row>
+    <row id="184">
+        <key>mess.The report generation process has been launched</key>
+        <label>Запущен процесс формирования отчета '{{name}}'</label>
+    </row>
+    <row id="161">
+        <key>mess.Access rights must be added to the application</key>
+        <label>Необходимо добавить права доступа в заявку</label>
+    </row>
+    <row id="168">
+        <key>mess.The new password does not meet security requirements</key>
+        <label>Новый пароль не отвечает требованиям безопасности</label>
+    </row>
+    <row id="117">
+        <key>app.Information about the access rights assigned to the user</key>
+        <label>Информация о правах доступа, назначенных на пользователя</label>
+    </row>
+    <row id="147">
+        <key>column.userParent</key>
+        <label>Руководитель</label>
+    </row>
+    <row id="145">
+        <key>column.organization</key>
+        <label>Подразделение</label>
+    </row>
+    <row id="113">
+        <key>app.to the main page</key>
+        <label>на главную</label>
+    </row>
+    <row id="149">
+        <key>column.displayName</key>
+        <label>Наименование</label>
+    </row>
+    <row id="154">
+        <key>button.Save</key>
+        <label>Сохранить</label>
+    </row>
+    <row id="148">
+        <key>column.employeeStatus</key>
+        <label>Статус работника</label>
+    </row>
+    <row id="116">
+        <key>app.Access rights</key>
+        <label>Права доступа</label>
+    </row>
+    <row id="135">
+        <key>mess.The password field is required</key>
+        <label>Поле пароль является обязательным для заполнения</label>
+    </row>
+    <row id="121">
+        <key>app.Section for changing user password</key>
+        <label>Раздел смены пароля пользователя</label>
+    </row>
+    <row id="127">
+        <key>app.Must contain lowercase letters</key>
+        <label>Должен содержать строчные буквы</label>
+    </row>
+    <row id="109">
+        <key>app.Personal office</key>
+        <label>Личный кабинет</label>
+    </row>
+    <row id="136">
+        <key>mess.The password is too short</key>
+        <label>Пароль слишком короткий</label>
+    </row>
+    <row id="134">
+        <key>mess.The time limit for waiting for a response from the server has been exceeded</key>
+        <label>Превышен лимит времени ожидания ответа от сервера</label>
+    </row>
+    <row id="151">
+        <key>column.Description</key>
+        <label>Описание</label>
+    </row>
+    <row id="143">
+        <key>column.telephoneNumber</key>
+        <label>Контактный телефон</label>
+    </row>
+    <row id="144">
+        <key>column.emailAddress</key>
+        <label>Электронная почта</label>
+    </row>
+    <row id="153">
+        <key>column.Resource name</key>
+        <label>Наименование ресурса</label>
+    </row>
+    <row id="114">
+        <key>app.Data</key>
+        <label>Данные</label>
+    </row>
+    <row id="152">
+        <key>column.Login</key>
+        <label>Логин</label>
+    </row>
+    <row id="138">
+        <key>mess.The password is very simple</key>
+        <label>Пароль очень простой</label>
+    </row>
+    <row id="155">
+        <key>button.Change password</key>
+        <label>Сменить пароль</label>
+    </row>
+    <row id="126">
+        <key>app.Should not be longer than 20 characters</key>
+        <label>Не должен быть длиннее 20 символов</label>
+    </row>
+    <row id="106">
+        <key>app.Enter password</key>
+        <label>Введите пароль</label>
+    </row>
+    <row id="125">
+        <key>app.Must be longer than 6 characters</key>
+        <label>Должен быть длиннее 6 символов</label>
+    </row>
+    <row id="140">
+        <key>column.fullName</key>
+        <label>Полное имя</label>
+    </row>
+    <row id="124">
+        <key>app.Password requirements</key>
+        <label>Требования к паролю</label>
+    </row>
+    <row id="122">
+        <key>app.New password</key>
+        <label>Новый пароль</label>
+    </row>
+    <row id="129">
+        <key>app.Must contain numbers</key>
+        <label>Должен содержать цифры</label>
+    </row>
+    <row id="108">
+        <key>app.Entrance</key>
+        <label>Вход</label>
+    </row>
+    <row id="119">
+        <key>app.User Account Information</key>
+        <label>Информация об учетных записях пользователя</label>
+    </row>
+    <row id="150">
+        <key>column.Code</key>
+        <label>Код</label>
+    </row>
+    <row id="130">
+        <key>app.Must contain special characters</key>
+        <label>Должен содержать специальные символы</label>
+    </row>
+    <row id="132">
+        <key>mess.Incorrect login or password</key>
+        <label>Неверный логин или пароль</label>
+    </row>
+    <row id="146">
+        <key>column.organizationPath</key>
+        <label>Полный путь подразделения</label>
+    </row>
+    <row id="133">
+        <key>mess.Access denied. Contact administrator</key>
+        <label>Доступ запрещен. Обратитесь к администратору</label>
+    </row>
+    <row id="142">
+        <key>column.personalNumber</key>
+        <label>Персональный номер</label>
+    </row>
+    <row id="111">
+        <key>app.Name</key>
+        <label>Имя</label>
+    </row>
+    <row id="115">
+        <key>app.Personal information about the user</key>
+        <label>Персональная информация о пользователе</label>
+    </row>
+    <row id="110">
+        <key>app.Surname</key>
+        <label>Отчество</label>
+    </row>
+    <row id="128">
+        <key>app.Must contain capital letters</key>
+        <label>Должен содержать заглавные буквы</label>
+    </row>
+    <row id="139">
+        <key>mess.The 'Password' and 'Confirm Password' fields do not match</key>
+        <label>Поля 'Пароль' и 'Подтверждение пароля' не совпадают</label>
+    </row>
+    <row id="120">
+        <key>app.Change password</key>
+        <label>Смена пароля</label>
+    </row>
+    <row id="123">
+        <key>app.Confirm password</key>
+        <label>Подтверждение пароля</label>
+    </row>
+    <row id="141">
+        <key>column.title</key>
+        <label>Должность</label>
+    </row>
+    <row id="105">
+        <key>app.The login field is required</key>
+        <label>Поле логин является обязательным для заполнения</label>
+    </row>
+    <row id="118">
+        <key>app.Accounts</key>
+        <label>Учетные записи</label>
+    </row>
+    <row id="107">
+        <key>app.The password field is required</key>
+        <label>Поле пароль является обязательным для заполнения</label>
+    </row>
+    <row id="137">
+        <key>mess.The password is too long</key>
+        <label>Пароль слишком длинный</label>
+    </row>
+    <row id="131">
+        <key>mess.You must enter your login and password</key>
+        <label>Необходимо указать логин и пароль</label>
+    </row>
+    <row id="179">
+        <key>mess.The application has been successfully approved</key>
+        <label>Заявка успешно согласована</label>
+    </row>
+    <row id="175">
+        <key>mess.A workflow name must be specified</key>
+        <label>Необходимо указать имя рабочего процесса</label>
+    </row>
+    <row id="164">
+        <key>mess.Application Rejection</key>
+        <label>Отклонение заявки</label>
+    </row>
+    <row id="157">
+        <key>mess.Access rights have been successfully added to the application</key>
+        <label>Права доступа успешно добавлены в заявку</label>
+    </row>
+    <row id="177">
+        <key>mess.The stage type must be specified</key>
+        <label>Необходимо указать тип этапа</label>
+    </row>
+    <row id="160">
+        <key>mess.You must select an employee from the list</key>
+        <label>Необходимо выбрать сотрудника из списка</label>
+    </row>
+    <row id="171">
+        <key>mess.Password successfully changed</key>
+        <label>Пароль успешно изменён</label>
+    </row>
+    <row id="163">
+        <key>mess.It is necessary to indicate the reason for rejecting the application in the 'Approver's comment' field</key>
+        <label>Требуется указать причину отклонения заявки в поле 'Комментарий согласующего'</label>
+    </row>
+    <row id="169">
+        <key>mess.You must provide password confirmation.</key>
+        <label>Необходимо указать подтверждение пароля</label>
+    </row>
+    <row id="173">
+        <key>mess.Data saved successfully</key>
+        <label>Данные успешно сохранены</label>
+    </row>
+    <row id="176">
+        <key>mess.The stage name must be specified</key>
+        <label>Необходимо указать имя этапа</label>
+    </row>
+    <row id="178">
+        <key>mess.It is necessary to indicate the coordinators</key>
+        <label>Необходимо указать согласующих</label>
+    </row>
+    <row id="182">
+        <key>mess.A new approver has been added to the approval stage</key>
+        <label>В этап согласования добавлен новый согласующий</label>
+    </row>
+    <row id="183">
+        <key>mess.The request has been successfully delegated</key>
+        <label>Заявка успешно делегирована</label>
+    </row>
+    <row id="166">
+        <key>mess.The application has been successfully sent for approval/execution</key>
+        <label>Заявка успешно отправлена на согласование/исполнение</label>
+    </row>
+    <row id="159">
+        <key>mess.The employee has already been added to the application</key>
+        <label>Работник уже добавлен в заявку</label>
+    </row>
+    <row id="167">
+        <key>mess.You must enter a new password</key>
+        <label>Необходимо указать новый пароль</label>
+    </row>
+    <row id="165">
+        <key>mess.Are you sure you want to reject the request to grant access rights to the user?</key>
+        <label>Вы уверены что хотите отклонить заявку на предоставление прав доступа для пользователя?</label>
+    </row>
+    <row id="172">
+        <key>mess.Not all fields are filled in correctly</key>
+        <label>Не все поля заполнены корректно</label>
+    </row>
+    <row id="185">
+        <key>mess.Error starting report generation process. Access denied</key>
+        <label>Ошибка запуска процесса формирования отчета. Доступ запрещен</label>
+    </row>
+    <row id="181">
+        <key>mess.The request has already been approved by another user</key>
+        <label>Заявка уже согласована другим пользователем</label>
+    </row>
+    <row id="162">
+        <key>mess.Need to add workers to the application</key>
+        <label>Необходимо добавить работников в заявку</label>
+    </row>
+    <row id="180">
+        <key>mess.Application successfully rejected</key>
+        <label>Заявка успешно отклонена</label>
+    </row>
+</lookupTable>

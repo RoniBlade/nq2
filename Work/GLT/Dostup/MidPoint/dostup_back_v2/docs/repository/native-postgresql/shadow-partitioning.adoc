@@ -1,0 +1,124 @@
+= Shadow Partitioning
+:page-since: "4.9"
+
+MidPoint 4.9 Native Repository support database table partitioning for shadows.
+
+Partitions are created per resource per object class automatically on first shadow add operation. If there are preexisting shadows with same resource and object class in default partition, they are automatically migrated to newly created partition during add transaction.
+
+NOTE: This needs to be done before attaching partition, because PostgreSQL refused to attach partition if the data, which should belong to partition are in other partitions.
+
+== Enabling Shadow Partitioning
+
+=== New Installations
+
+On new installations shadow partitioning is enabled by default in system confirutation:
+
+.System Configuration
+[source, xml]
+----
+<systemConfiguration>
+    <internals>
+        <repository>
+            <autoCreatePartitionsOnAdd>true</autoCreatePartitionsOnAdd>
+        </repository>
+    </internals>
+</systemConfiguration>
+----
+
+=== Upgraded Installation
+
+During execution of SQL upgrade script all shadows are automaticly moved to default partition (`m_shadow_default`).
+
+In order to enable autopartitioning and create partitions for existing shadows:
+
+. Suspend all tasks synchronizing or modifying resources / shadows
+. Navigate to Admin GUI - About Page and click on Enable Shadow Partitioning button
+  - This will create and run task named *Repartition Repository*, which
+    will modify system configuration to enable automatic partition creation
+
+. Wait for task *Repartition Repository* finish
+. Reenable all tasks suspended in step 1.
+
+
+The *Repartition Repository* task is equivalent to following task:
+
+[source, xml]
+----
+<task oid="00000000-0000-0000-0000-000000000581"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+    <name>Repartition Repository (After Upgrade) Task</name>
+    <assignment id="1">
+        <identifier>archetype</identifier>
+        <targetRef oid="00000000-0000-0000-0000-000000000519" type="ArchetypeType" />
+    </assignment>
+    <assignment id="2">
+        <identifier>auxiliaryArchetype</identifier>
+        <targetRef oid="00000000-0000-0000-0000-000000000528" type="ArchetypeType" />
+    </assignment>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+
+    <executionState>suspended</executionState>
+    <schedulingState>suspended</schedulingState>
+    <binding>loose</binding>
+
+    <activity>
+        <composition>
+            <activity>
+                <order>1</order>
+                <work>
+                    <explicitChangeExecution>
+                        <delta>
+                            <t:changeType>modify</t:changeType>
+                            <t:objectType>SystemConfigurationType</t:objectType>
+                            <t:oid>00000000-0000-0000-0000-000000000001</t:oid>
+                            <t:itemDelta>
+                                <t:modificationType>add</t:modificationType>
+                                <t:path>internals/repository/autoCreatePartitionsOnAdd</t:path>
+                                <t:value xsi:type="xsd:boolean">true</t:value>
+                            </t:itemDelta>
+                        </delta>
+                    </explicitChangeExecution>
+                </work>
+            </activity>
+            <activity>
+                <order>2</order>
+                <work>
+                    <repartitioning />
+                </work>
+            </activity>
+        </composition>
+    </activity>
+</task>
+----
+
+
+== Disabling Automatic Shadow Partitioning
+
+IF you disable automatic shadow partitioning (`autoCreatePartitionsOnAdd`) using system configuration, the repository will behave as following:
+
+ * No new partitions will be created on shadow add.
+ * Existing partitions wills still be in use.
+ * Existing shadows will still be in their respective partitions. 
+ * New shadows belonging:
+** to existing partitions - will be stored in these partitions.
+** to existing resource, but `objectClass` which does not have partition attached - will be stored in default partition for that resource.
+** new resource - will b e stored in default partition
+
+
+== Partition naming / schema
+
+`m_shadow` table::
+Base shadow table, partitioned by `resourceRefTargetOid` column (this column stores oid of resource) and default partition `m_shadow_default` (this partition stores all shadows, which do not belong to other partitions)
+
+`m_shadow_default` table::
+Default partition for shadows, usually should be empty on new installations if autopartitioning was not disabled. If you upgraded from 4.8, this table is original `m_shadow` table from 4.8.
+
+`m_shadow_{resourceOid}` table::
+ Partition for resource,  this table does not store any actual data and it is partitioned by `objectClassId`. It has default partition named `m_shadow_{resourceId}_default`.
+
+`m_shadow_{resourceOid}_{objectClassId}`::
+Partition for resource and object class. `objectClassId` is id from `m_uri` table, which maps URIs / QNames to numeric identifiers.

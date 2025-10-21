@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xsd:schema elementFormDefault="qualified" targetNamespace="http://example.com/xml/ns/mySchema"
+	xmlns:tns="http://example.com/xml/ns/mySchema"
+	xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+	xmlns:a="http://prism.evolveum.com/xml/ns/public/annotation-3"
+	xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:simpleType name="GenderType">
+		<xsd:annotation>
+			<xsd:documentation>
+                Human`s gender
+            </xsd:documentation>
+			<xsd:appinfo>
+				<jaxb:typesafeEnumClass/>
+			</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="M">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<jaxb:typesafeEnumMember name="M"/>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="F">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<jaxb:typesafeEnumMember name="F"/>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="UserExtensionType">
+		<xsd:annotation>
+			<xsd:appinfo>
+				<a:extension ref="c:UserType"/>
+			</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="vacationFrom" type="xsd:dateTime" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.vacationFrom</a:displayName>
+						<a:displayOrder>80</a:displayOrder>
+						<a:help>UserType.vacationFrom</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="vacationTo" type="xsd:dateTime" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.vacationTo</a:displayName>
+						<a:displayOrder>90</a:displayOrder>
+						<a:help>UserType.vacationTo</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="organizationPath" type="xsd:string" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.organizationFull</a:displayName>
+						<a:displayOrder>180</a:displayOrder>
+						<a:help>UserType.organizationFull</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="employeeStatus" type="xsd:string" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.employeeStatus</a:displayName>
+						<a:displayOrder>190</a:displayOrder>
+						<a:help>UserType.employeeStatus</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="managerId" type="xsd:string" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.managerId</a:displayName>
+						<a:displayOrder>210</a:displayOrder>
+						<a:help>UserType.managerId</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="gender" type="tns:GenderType" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>UserType.gender</a:displayName>
+						<a:displayOrder>200</a:displayOrder>
+						<a:help>UserType.gender</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="AssignmentExtensionType">
+		<xsd:annotation>
+			<xsd:appinfo>
+				<a:extension ref="c:AssignmentType"/>
+			</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="file" type="xsd:base64Binary" minOccurs="0">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:displayName>case.file</a:displayName>
+						<a:displayOrder>100</a:displayOrder>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ArchetypeTypeExtensionType">
+		<xsd:annotation>
+			<xsd:appinfo>
+				<a:extension ref="c:ArchetypeType"/>
+			</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="formTabName" type="xsd:string" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>ArchetypeType.tab</a:displayName>
+						<a:displayOrder>30</a:displayOrder>
+						<a:help>ArchetypeType.tab</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="RoleExtensionType">
+		<xsd:annotation>
+			<xsd:appinfo>
+				<a:extension ref="c:RoleType"/>
+			</xsd:appinfo>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element name="RoleLevel" type="xsd:string" minOccurs="0" maxOccurs="1">
+				<xsd:annotation>
+					<xsd:appinfo>
+						<a:indexed>true</a:indexed>
+						<a:displayName>Role.level</a:displayName>
+						<a:displayOrder>820</a:displayOrder>
+						<a:help>Role.level</a:help>
+					</xsd:appinfo>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+</xsd:schema>

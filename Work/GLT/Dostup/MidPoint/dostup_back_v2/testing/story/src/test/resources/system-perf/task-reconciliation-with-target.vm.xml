@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (C) 2010-2025 Evolveum and contributors
+  ~
+  ~ This work is dual-licensed under the Apache License 2.0
+  ~ and European Union Public License. See LICENSE file for details.
+  -->
+
+<!--
+Parameters:
+ - taskOid
+ - index
+ - resourceOid
+ - workerThreads
+ - workerTasks
+ - bucketing
+ - fixedCharactersPositions
+ - varyingCharactersPositions
+-->
+
+<task oid="$taskOid"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3"
+        xmlns:icfs="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/resource-schema-3">
+
+    <name>task-reconciliation-target-$index</name>
+
+    <ownerRef oid="00000000-0000-0000-0000-000000000002"/>
+    <executionState>runnable</executionState>
+
+    <objectRef oid="$resourceOid" type="ResourceType" />
+
+    <activity>
+        <work>
+            <reconciliation>
+                <resourceObjects>
+                    <resourceRef oid="$resourceOid"/>
+                    <objectclass>ri:AccountObjectClass</objectclass>
+                </resourceObjects>
+            </reconciliation>
+        </work>
+        <tailoring>
+            <change>
+                <reference>resourceObjects</reference>
+                <distribution>
+                    <workerThreads>$workerThreads</workerThreads>
+#if($workerTasks > 0)
+                    <workers>
+                        <workersPerNode>
+                            <count>$workerTasks</count>
+                        </workersPerNode>
+                    </workers>
+#end
+#if($bucketing)
+                    <buckets>
+                        <stringSegmentation>
+                            <discriminator>attributes/icfs:name</discriminator>
+                            <boundary>
+                                <position>1</position>
+                                <characters>u</characters>
+                            </boundary>
+                            <boundary>
+                                <position>2</position>
+                                <characters>\-</characters>
+                            </boundary>
+#foreach($fixed in $fixedCharactersPositions)
+                            <boundary>
+                                <position>$fixed</position>
+                                <characters>0</characters>
+                            </boundary>
+#end
+#foreach($varying in $varyingCharactersPositions)
+                            <boundary>
+                                <position>$varying</position>
+                                <characters>0-9</characters>
+                            </boundary>
+#end
+                        </stringSegmentation>
+                    </buckets>
+#end
+                </distribution>
+            </change>
+        </tailoring>
+    </activity>
+</task>

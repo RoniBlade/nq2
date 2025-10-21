@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: ingest-gate
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+
+kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:109.73.202.251:31413}
+  odpu:
+    topic-name: ${KAFKA_ODPU_TOPIC_NAME:ODPU_RAW_DATA}
+  hvs:
+    topic-name: ${KAFKA_HVS_TOPIC_NAME:HVS_RAW_DATA}
+
+xlsx:
+  odpu: ${XLSX_ODPU_FILE_PATH:target/classes/odpu.xlsx}
+  hvs: ${XLSX_HVS_FILE_PATH:target/classes/hvs.xlsx}

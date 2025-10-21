@@ -1,0 +1,130 @@
+WITH
+-- 1. Проверка полноты (по количеству строк)
+psc_c1 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreClient pc
+        JOIN target_edw.clientexternalcode ce
+          ON pc.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+psc_c2 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.outletkey,
+            ce.clientid AS clientID
+        FROM loading_dms."DimOutlet_" d
+        LEFT JOIN target_edw.clientexternalcode ce
+          ON ce.externalid = d.CustomerKey
+         AND ce.sourceid = 5
+    ) t
+),
+
+-- 2. Проверка наличия дубликатов
+psc_u1 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStoreClient pc
+        JOIN target_edw.clientexternalcode ce
+          ON pc.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+psc_u2 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.partnerStoreClient pc
+        JOIN target_edw.clientexternalcode ce
+          ON pc.clientID = ce.clientid
+         AND ce.sourceid = 5
+    ) t
+),
+
+-- 3. Проверка полноты построчно -- target -> staging
+psc_cfts AS (
+    SELECT pc.clientID::TEXT
+    FROM target_edw.partnerStoreClient pc
+    JOIN target_edw.clientexternalcode ce
+      ON pc.clientID = ce.clientid
+     AND ce.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+           CAST(ce2.clientid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.clientexternalcode ce2
+      ON ce2.externalid = d.CustomerKey
+     AND ce2.sourceid = 5
+),
+psc_cftsr AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM psc_cfts
+),
+
+-- 4. Проверка полноты построчно -- staging -> target
+psc_cfst AS (
+    SELECT DISTINCT
+           CAST(ce2.clientid AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.clientexternalcode ce2
+      ON ce2.externalid = d.CustomerKey
+     AND ce2.sourceid = 5
+    EXCEPT 
+    SELECT
+           pc.clientID::TEXT
+    FROM target_edw.partnerStoreClient pc
+    JOIN target_edw.clientexternalcode ce
+      ON pc.clientID = ce.clientid
+     AND ce.sourceid = 5
+),
+psc_cfstr AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(*) AS count
+    FROM psc_cfst
+),
+
+-- 5. Проверка количества внешних кодов
+psc_ec1 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(DISTINCT pc.clientID) AS count
+    FROM target_edw.partnerStoreClient pc
+    JOIN target_edw.clientexternalcode ce
+      ON pc.clientID = ce.clientid
+     AND ce.sourceid = 5
+),
+psc_ec2 AS (
+    SELECT 'partner_store_client' AS table_name,
+           COUNT(DISTINCT ce2.clientid) AS count
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN target_edw.clientexternalcode ce2
+      ON ce2.externalid = d.CustomerKey
+     AND ce2.sourceid = 5
+),
+
+-- Сборка итогового результата
+psc AS (
+    SELECT
+        psc_c1.table_name,
+        CASE WHEN psc_c1.count = psc_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN psc_u1.count = psc_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN psc_cfstr.count = 0 AND psc_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN psc_ec1.count = psc_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM psc_c1
+    JOIN psc_c2  ON psc_c1.table_name = psc_c2.table_name
+    JOIN psc_u1  ON psc_c1.table_name = psc_u1.table_name
+    JOIN psc_u2  ON psc_c1.table_name = psc_u2.table_name
+    JOIN psc_cftsr ON psc_c1.table_name = psc_cftsr.table_name
+    JOIN psc_cfstr ON psc_c1.table_name = psc_cfstr.table_name
+    JOIN psc_ec1  ON psc_c1.table_name = psc_ec1.table_name
+    JOIN psc_ec2  ON psc_c1.table_name = psc_ec2.table_name
+)
+SELECT * FROM psc;

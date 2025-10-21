@@ -1,0 +1,29 @@
+# config.yaml
+
+features:
+  lags: 24
+  rolling_windows: [6, 12, 24]
+
+model:
+  type: random_forest
+  params:
+    n_estimators: 200
+    max_depth: 12
+    n_jobs: -1
+
+min_rows_per_sensor: 168      # минимум точек (7*24)
+
+training:
+  mode: full                  # full = переобучение с нуля
+  train_interval_min: 60      # периодичность (если как сервис в цикле)
+  days_lookback: null         # null = вся история (а не N дней)
+
+# ← сюда добавляем настройки кафки
+kafka:
+  bootstrap: "109.73.202.251:31493"
+  topics:
+    - HVS_RAW_DATA
+    - ODPU_RAW_DATA
+  group_id: "s3-trainer-rest-2"
+  auto_offset_reset: "earliest"
+  model_events_topic: "MODEL_TRAINED"

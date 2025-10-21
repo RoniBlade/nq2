@@ -1,0 +1,125 @@
+WITH
+-- 1. Проверка полноты (количество строк) в target
+ddct_c1 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.dictionarydoctype d
+  JOIN target_edw.doctypeexternalcode dex
+    ON d.id = dex.doctypeid AND dex.sourceid = 5
+),
+-- 2. Проверка полноты (количество строк) в источнике (staging)
+ddct_c2 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT
+         dex.doctypeid       AS id,
+         d.doctypename       AS doctypename,
+         d.doctypebusinesskey AS businessid,
+         d.campari_status    AS statusid,
+         d.hash_value        AS unique_doctypeid
+    FROM loading_dms."DimDocType_" d
+    LEFT JOIN target_edw.doctypeexternalcode dex
+      ON dex.externalid = d.doctypekey AND dex.sourceid = 5
+  ) t
+),
+-- 3. Проверка наличия дубликатов в target
+ddct_u1 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.dictionarydoctype d
+  JOIN target_edw.doctypeexternalcode dex
+    ON d.id = dex.doctypeid AND dex.sourceid = 5
+),
+ddct_u2 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT *
+    FROM target_edw.dictionarydoctype d
+    JOIN target_edw.doctypeexternalcode dex
+      ON d.id = dex.doctypeid AND dex.sourceid = 5
+  ) t
+),
+-- 4. Проверка полноты построчно – target → staging
+ddct_cfts AS (
+  SELECT d.id::TEXT,
+         d.doctypename::TEXT,
+         d.businessid::TEXT,
+         d.statusid::TEXT,
+         d.unique_doctypeid::TEXT
+  FROM target_edw.dictionarydoctype d
+  EXCEPT
+  SELECT DISTINCT
+         CAST(dex.doctypeid AS TEXT)        AS id,
+         CAST(d.doctypename AS TEXT)         AS doctypename,
+         CAST(d.doctypebusinesskey AS TEXT)  AS businessid,
+         CAST(d.campari_status AS TEXT)       AS statusid,
+         CAST(d.hash_value AS TEXT)           AS unique_doctypeid
+  FROM loading_dms."DimDocType_" d
+  LEFT JOIN target_edw.doctypeexternalcode dex
+    ON dex.externalid = d.doctypekey AND dex.sourceid = 5
+),
+ddct_cftsr AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM ddct_cfts
+),
+-- 5. Проверка полноты построчно – staging → target
+ddct_cfst AS (
+  SELECT DISTINCT
+         CAST(dex.doctypeid AS TEXT),
+         CAST(d.doctypename AS TEXT),
+         CAST(d.doctypebusinesskey AS TEXT),
+         CAST(d.campari_status AS TEXT),
+         CAST(d.hash_value AS TEXT)
+  FROM loading_dms."DimDocType_" d
+  LEFT JOIN target_edw.doctypeexternalcode dex
+    ON dex.externalid = d.doctypekey AND dex.sourceid = 5
+  EXCEPT
+  SELECT 
+         d.id::TEXT,
+         d.doctypename::TEXT,
+         d.businessid::TEXT,
+         d.statusid::TEXT,
+         d.unique_doctypeid::TEXT
+  FROM target_edw.dictionarydoctype d
+),
+ddct_cfstr AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(*) AS count
+  FROM ddct_cfst
+),
+-- 6. Проверка внешних кодов (сравнение уникальных значений id)
+ddct_ec1 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(DISTINCT d.id) AS count
+  FROM target_edw.dictionarydoctype d
+  JOIN target_edw.doctypeexternalcode dex
+    ON d.id = dex.doctypeid AND dex.sourceid = 5
+),
+ddct_ec2 AS (
+  SELECT 'dictionarydoctype' AS table_name,
+         COUNT(DISTINCT dex.doctypeid) AS count
+  FROM loading_dms."DimDocType_" d
+  LEFT JOIN target_edw.doctypeexternalcode dex
+    ON dex.externalid = d.doctypekey AND dex.sourceid = 5
+),
+-- Итоговая сборка результата
+ddct AS (
+  SELECT
+    ddct_c1.table_name,
+    CASE WHEN ddct_c1.count = ddct_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+    CASE WHEN ddct_u1.count = ddct_u2.count THEN 'done' ELSE 'fail' END AS unique,
+    CASE WHEN ddct_cfstr.count = 0 AND ddct_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+    CASE WHEN ddct_ec1.count = ddct_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+  FROM ddct_c1
+  JOIN ddct_c2  ON ddct_c1.table_name = ddct_c2.table_name
+  JOIN ddct_u1  ON ddct_c1.table_name = ddct_u1.table_name
+  JOIN ddct_u2  ON ddct_c1.table_name = ddct_u2.table_name
+  JOIN ddct_cftsr ON ddct_c1.table_name = ddct_cftsr.table_name
+  JOIN ddct_cfstr ON ddct_c1.table_name = ddct_cfstr.table_name
+  JOIN ddct_ec1  ON ddct_c1.table_name = ddct_ec1.table_name
+  JOIN ddct_ec2  ON ddct_c1.table_name = ddct_ec2.table_name
+)
+SELECT * FROM ddct;

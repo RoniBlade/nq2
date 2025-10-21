@@ -1,0 +1,67 @@
+Настроить страницу для получения callback
+
+Как решить проблему hasNoExport?
+
+import React from 'react';
+import { OktaAuth } from '@okta/okta-auth-js';
+import { SessionApi} from "metabase/services";
+
+ // Инициализация OktaAuth
+ const oktaAuth = new OktaAuth({
+  issuer: 'https://dev-91515140.okta.com/oauth2/default',
+  clientId: '0oadjayev40xqxwQB5d7',
+  redirectUri: 'http://90.156.227.253:3000/auth/forgot_password/',
+
+  responseType: 'code',
+  pkce: false
+});
+
+  // Функция отправки запроса
+const sendRequest = () => {
+  fetch('/api/session/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      username: 'adamlatyrov279@gmail.com',
+      password: 'b4v-CFA-hGM-j9w'
+    })
+  })
+  .then(response => {
+    if (response.ok) {
+      window.location.href = 'http://90.156.227.253:3000/';
+    } else {
+      console.error('Request failed', response);
+    }
+  })
+  .catch(error => console.error('Error:', error));
+};
+
+  // Функция для обработки входа через Okta
+  const handleOktaLogin = async () => {
+    try {
+      const credential = "Adamtedo";
+      await SessionApi.createWithGoogleAuth({ token: credential });
+      } catch (error) {
+      console.error('Ошибка при входе через Okta', error);
+    }
+  };
+
+export const ForgotPassword = ({
+
+}: ForgotPasswors): JSX.Element => {
+
+  return (
+   
+    <button onClick={handleOktaLogin}>Войти через Okta</button>
+    
+    );
+};
+
+
+Используем этот шаблон и подставляем вместо ForgotPassword нужное название.
+
+
+
+Теперь нужно - реализовать логику на бэкэнде для обработки проверки токена на окте и получения данных, а далее создание пользака и получение данных о нем

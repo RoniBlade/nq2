@@ -1,0 +1,200 @@
+WITH
+-- 1. Проверка полноты (по количеству строк)
+ps_c1 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStore p
+        JOIN target_edw.storeexternalcode se 
+          ON p.id = se.partnerstoreid
+         AND se.sourceid = 5
+    ) t
+ -- 348723
+),
+ps_c2 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.outletkey,
+            -- Определяем адрес согласно правилу:
+            CASE 
+              WHEN d.CoveringPointKey <> -1 
+                   AND c.CoveringPointKey IS NOT NULL 
+                THEN c.CPDeliveryAddress 
+              ELSE d.OLDeliveryAddress 
+            END AS address,
+            -- Определяем значение для status (до перекодировки)
+            CASE 
+              WHEN d.CoveringPointKey <> -1 
+                   AND c.CoveringPointKey IS NOT NULL 
+                THEN c.StatusKey 
+              ELSE d.StatusKey 
+            END AS status_key,
+            -- Определяем значение для ChainID (до перекодировки)
+            CASE 
+              WHEN d.CoveringPointKey <> -1 
+                   AND c.CoveringPointKey IS NOT NULL 
+                THEN c.NetworkKey 
+              ELSE d.NetworkKey 
+            END AS network_key,
+            d.OLTradingName AS tradingname,
+            d.OutletBusinessKey AS businessID,
+            c.CoveringPointKey AS externaldeduplicate
+        FROM loading_dms."DimOutlet_" d
+        LEFT JOIN loading_dms."DimCoveringPoints_" c
+          ON d.CoveringPointKey = c.CoveringPointKey
+        -- Дополнительные фильтры (если нужны) можно добавить здесь
+    ) t
+),
+
+-- 2. Проверка наличия дубликатов
+ps_u1 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.partnerStore p
+        JOIN target_edw.storeexternalcode se 
+          ON p.id = se.partnerstoreid
+         AND se.sourceid = 5
+    ) t
+),
+ps_u2 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.partnerStore p
+        JOIN target_edw.storeexternalcode se 
+          ON p.id = se.partnerstoreid
+         AND se.sourceid = 5
+    ) t
+),
+
+-- 3. Проверка полноты построчно (target → staging)
+ps_cfts AS (
+    SELECT 
+        p.id::TEXT,
+        p.address::TEXT,
+        p.statusID::TEXT,
+        p.ChainID::TEXT,
+        p.tradingname::TEXT,
+        p.businessID::text
+        FROM target_edw.partnerStore p
+    JOIN target_edw.storeexternalcode se 
+      ON p.id = se.partnerstoreid
+     AND se.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+        CAST(d.outletkey AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.CPDeliveryAddress 
+                ELSE d.OLDeliveryAddress 
+              END AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.StatusKey 
+                ELSE d.StatusKey 
+              END AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.NetworkKey 
+                ELSE d.NetworkKey 
+              END AS TEXT),
+        CAST(d.OLTradingName AS TEXT),
+        CAST(d.OutletBusinessKey AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN loading_dms."DimCoveringPoints_" c
+      ON d.CoveringPointKey = c.CoveringPointKey
+),
+ps_cftsr AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM ps_cfts
+),
+
+-- 4. Проверка полноты построчно (staging → target)
+ps_cfst AS (
+    SELECT DISTINCT
+        CAST(d.coveringpointkey AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.CPDeliveryAddress 
+                ELSE d.OLDeliveryAddress 
+              END AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.StatusKey 
+                ELSE d.StatusKey 
+              END AS TEXT),
+        CAST( CASE 
+                WHEN d.CoveringPointKey <> -1 
+                     AND c.CoveringPointKey IS NOT NULL 
+                 THEN c.NetworkKey 
+                ELSE d.NetworkKey 
+              END AS TEXT),
+        CAST(d.OLTradingName AS TEXT),
+        CAST(d.OutletBusinessKey AS TEXT)
+    FROM loading_dms."DimOutlet_" d
+    LEFT JOIN loading_dms."DimCoveringPoints_" c
+      ON d.CoveringPointKey = c.CoveringPointKey
+    EXCEPT 
+    SELECT 
+        p.id::TEXT,
+        p.address::TEXT,
+        p.statusID::TEXT,
+        p.ChainID::TEXT,
+        p.tradingname::TEXT,
+        p.businessID::TEXT
+    FROM target_edw.partnerStore p
+    JOIN target_edw.storeexternalcode se 
+      ON p.id = se.partnerstoreid
+     AND se.sourceid = 5
+),
+ps_cfstr AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(*) AS count
+    FROM ps_cfst
+),
+
+-- 5. Проверка внешних кодов
+ps_ec1 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(DISTINCT p.id) AS count
+    FROM target_edw.partnerStore p
+    JOIN target_edw.storeexternalcode se 
+      ON p.id = se.partnerstoreid
+     AND se.sourceid = 5
+),
+ps_ec2 AS (
+    SELECT 'partner_store' AS table_name,
+           COUNT(DISTINCT d.coveringpointkey) AS count
+    FROM loading_dms."DimOutlet_" d
+),
+
+-- Сборка итогового результата
+ps AS (
+    SELECT
+        ps_c1.table_name,
+        CASE WHEN ps_c1.count = ps_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN ps_u1.count = ps_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN ps_cfstr.count = 0 AND ps_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN ps_ec1.count = ps_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM ps_c1
+    JOIN ps_c2  ON ps_c1.table_name = ps_c2.table_name
+    JOIN ps_u1  ON ps_c1.table_name = ps_u1.table_name
+    JOIN ps_u2  ON ps_c1.table_name = ps_u2.table_name
+    JOIN ps_cftsr ON ps_c1.table_name = ps_cftsr.table_name
+    JOIN ps_cfstr ON ps_c1.table_name = ps_cfstr.table_name
+    JOIN ps_ec1  ON ps_c1.table_name = ps_ec1.table_name
+    JOIN ps_ec2  ON ps_c1.table_name = ps_ec2.table_name
+)
+SELECT * FROM ps;

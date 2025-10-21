@@ -1,0 +1,169 @@
+import datetime
+import pendulum
+import pandas as pd
+from airflow.decorators import dag, task
+from airflow.providers.mysql.hooks.mysql import MySqlHook
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.python import PythonOperator
+
+tables_fields = {
+    'project_store': {'id': 'INTEGER', 'address': 'VARCHAR(255)', 'latitude': 'FLOAT', 'longitude': 'FLOAT', 'active': 'BOOLEAN', 'store_title_id': 'INTEGER'},
+    'project_call': {'date': 'DATE', 'cancel_reason': 'VARCHAR(255)', 'cancel_reason_text': 'TEXT', 'fake': 'BOOLEAN', 'id': 'INTEGER'},
+    'project_promocalendar': {'type': 'VARCHAR(255)', 'start': 'DATE', '"end"': 'DATE', 'posm_date': 'DATE'},  # "end" обернут в кавычки
+    'project_plan': {'date': 'DATE'}
+}
+
+functions_sql = """
+CREATE EXTENSION IF NOT EXISTS dblink;
+
+-- Создание dblink соединения
+CREATE OR REPLACE FUNCTION create_dblink_connections()
+RETURNS void AS $$
+BEGIN
+    PERFORM dblink_connect('source_db', 'host=<source_host> dbname=<source_db> user=<source_user> password=<source_password>');
+    PERFORM dblink_connect('dest_db', 'host=<dest_host> dbname=<dest_db> user=<dest_user> password=<dest_password>');
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT create_dblink_connections();
+
+CREATE OR REPLACE FUNCTION transfer_storeExternalCode()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO target_edw.storeExternalCode (sourceID, externalID, partnerStoreID)
+    SELECT
+        '001' AS sourceID,
+        ps.id AS externalID,
+        ps_edw.id AS partnerStoreID
+    FROM dblink('source_db', 'SELECT id, latitude, longitude FROM loading_automatica.project_store') AS ps(id INTEGER, latitude FLOAT, longitude FLOAT)
+    JOIN target_edw.partnerStore ps_edw ON ps.latitude = ps_edw.latitude
+                                        AND ps.longitude = ps_edw.longitude;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transfer_partnerStore()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO target_edw.partnerStore (address, latitude, longitude, statusID, storeTitleID, partnerID)
+    SELECT
+        ps.address,
+        ps.latitude,
+        ps.longitude,
+        ps.active AS statusID,
+        pst.id AS storeTitleID,
+        p.id AS partnerID 
+    FROM dblink('source_db', 'SELECT address, latitude, longitude, active, store_title_id FROM loading_automatica.project_store') AS ps(address VARCHAR, latitude FLOAT, longitude FLOAT, active BOOLEAN, store_title_id INTEGER)
+    JOIN dblink('source_db', 'SELECT id, name FROM loading_automatica.project_storetitle') AS pst(id INTEGER, name VARCHAR) ON ps.store_title_id = pst.id
+    JOIN target_edw.storeTitle st ON pst.name = st.name
+    JOIN target_edw.partner p ON p.titleID = st.id AND p.name = pst.name;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transfer_storeVisit()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO target_edw.storeVisit (partnerStoreID, visitDate, cancelReasonID, cancelReasonText, fakeID, externalID, sourceID)
+    SELECT
+        ps.id AS partnerStoreID,
+        pc.date AS visitDate,
+        pc.cancel_reason AS cancelReasonID,
+        pc.cancel_reason_text AS cancelReasonText,
+        pc.fake AS fakeID,
+        pc.id AS externalID,
+        '001' AS sourceID
+    FROM dblink('source_db', 'SELECT date, cancel_reason, cancel_reason_text, fake, id, store_id FROM loading_automatica.project_call') AS pc(date DATE, cancel_reason VARCHAR, cancel_reason_text TEXT, fake BOOLEAN, id INTEGER, store_id INTEGER)
+    JOIN target_edw.partnerStore ps ON ps.externalID = pc.store_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transfer_storePromoCalendar()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO target_edw.storePromoCalendar (partnerStoreID, calendarTypeID, startDate, endDate, posmDate)
+    SELECT
+        sec.partnerStoreID,
+        ppc.type AS calendarTypeID,
+        ppc.start AS startDate,
+        ppc.end AS endDate,
+        ppc.posm_date AS posmDate
+    FROM dblink('source_db', 'SELECT type, start, "end", posm_date, store_id FROM loading_automatica.project_promocalendar') AS ppc(type VARCHAR, start DATE, "end" DATE, posm_date DATE, store_id INTEGER)
+    JOIN target_edw.storeExternalCode sec ON sec.externalID = ppc.store_id AND sec.sourceID = '001';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION transfer_storeVisitPlan()
+RETURNS void AS $$
+BEGIN
+    INSERT INTO target_edw.storeVisitPlan (visitDate, partnerStoreID, storeVisitID)
+    SELECT
+        pp.date AS visitDate,
+        sec.partnerStoreID,
+        sv.id AS storeVisitID
+    FROM dblink('source_db', 'SELECT date, store_id, call_id FROM loading_automatica.project_plan') AS pp(date DATE, store_id INTEGER, call_id INTEGER)
+    JOIN target_edw.storeExternalCode sec ON sec.externalID = pp.store_id AND sec.sourceID = '001'
+    JOIN target_edw.storeVisit sv ON sv.externalID = pp.call_id AND sv.sourceID = '001';
+END;
+$$ LANGUAGE plpgsql;
+"""
+
+@dag(
+    dag_id="loading_automatica",
+    schedule_interval="*/15 * * * *",
+    start_date=pendulum.datetime(2024, 7, 1, tz="UTC"),
+    catchup=False,
+    dagrun_timeout=datetime.timedelta(minutes=60),
+)
+def etl_dag():
+
+    start = DummyOperator(task_id='start')
+    end = DummyOperator(task_id='end')
+
+    @task
+    def transfer_data(schema_name, table_name):
+        src_conn_id = 'automatica_db'
+        dest_conn_id = 'my_db'
+
+        mysql_hook = MySqlHook(mysql_conn_id=src_conn_id)
+        pg_hook = PostgresHook(postgres_conn_id=dest_conn_id)
+
+        fields = tables_fields[table_name].keys()
+        query = f"SELECT {', '.join(fields)} FROM {schema_name}.{table_name}"
+
+        src_conn = mysql_hook.get_conn()
+        df = pd.read_sql(query, src_conn)
+
+        dest_engine = pg_hook.get_sqlalchemy_engine()
+        df.to_sql(table_name, dest_engine, schema='loading_automatica', if_exists='replace', index=False)
+
+    @task
+    def execute_functions():
+        dest_conn_id = 'my_db'
+        pg_hook = PostgresHook(postgres_conn_id=dest_conn_id)
+        pg_hook.run(functions_sql)
+
+    for table in tables_fields.keys():
+        schema = 'campari'
+
+        # Создание таблицы в PostgreSQL
+        create_table_task = SQLExecuteQueryOperator(
+            task_id=f'create_table_loading_automatica_{table}',
+            conn_id='my_db',
+            sql=f"""
+            CREATE SCHEMA IF NOT EXISTS loading_automatica;
+            CREATE TABLE IF NOT EXISTS loading_automatica.{table} (
+                {', '.join([f'{field} {datatype}' for field, datatype in tables_fields[table].items()])}
+            );
+            """,
+        )
+
+        # Перенос данных из MySQL в PostgreSQL
+        transfer_task = transfer_data.override(task_id=f'transfer_{table}')(schema, table)
+
+        # Выполнение функций PostgreSQL после переноса данных
+        functions_task = execute_functions()
+
+        start >> create_table_task >> transfer_task >> functions_task >> end
+
+dag = etl_dag()

@@ -1,0 +1,116 @@
+35340822 acdoca_export.csv
+13 dictionary/ACAC_OBJECTS EXPORT.csv
+9595 dictionary/ACDOCA_M_EXTRACT EXPORT.csv
+596 dictionary/ADR6 EXPORT.csv
+4885 dictionary/ADRC EXPORT.csv
+3385 dictionary/ANEK EXPORT.csv
+9810 dictionary/ANEP EXPORT.csv
+288 dictionary/ANKA EXPORT.csv
+2226 dictionary/ANLA EXPORT.csv
+14700 dictionary/ANLB EXPORT.csv
+78269 dictionary/ANLC EXPORT.csv
+32298 dictionary/ANLP EXPORT.csv
+2735 dictionary/ANLZ EXPORT.csv
+8133 dictionary/AUFK EXPORT.csv
+49297 dictionary/AUSP_1 EXPORT.csv
+97630 dictionary/BKPF 2023 EXPORT.csv
+454 dictionary/BNKA EXPORT.csv
+99390 dictionary/BSAD EXPORT.csv
+82429 dictionary/BSAK EXPORT.csv
+86256 dictionary/BSEG_ADD EXPORT.csv
+1476 dictionary/BSIK EXPORT.csv
+65 dictionary/CABN EXPORT.csv
+67 dictionary/CABNT EXPORT.csv
+11 dictionary/CEPC_BUKRS EXPORT.csv
+11 dictionary/CEPC EXPORT.csv
+11 dictionary/CEPCT EXPORT.csv
+590 dictionary/CSKA EXPORT.csv
+590 dictionary/CSKB EXPORT.csv
+45 dictionary/CSKS EXPORT.csv
+45 dictionary/CSKT EXPORT.csv
+1171 dictionary/CSKU EXPORT.csv
+18 dictionary/CSLA EXPORT.csv
+18 dictionary/CSLT EXPORT.csv
+14193 dictionary/DD03L_1 EXPORT.csv
+2331 dictionary/DD03L EXPORT.csv
+68285 dictionary/EKET EXPORT.csv
+132735 dictionary/EKKN EXPORT.csv
+19536 dictionary/EKKO EXPORT.csv
+62440 dictionary/EKPO EXPORT.csv
+28 dictionary/FAGL_011PC EXPORT.csv
+148 dictionary/FAGL_011QT EXPORT.csv
+385 dictionary/FAGL_011ZC EXPORT.csv
+815 dictionary/GLOFAAASSETDATA EXPORT.csv
+7 dictionary/GLOFAACNTRLC EXPORT.csv
+794 dictionary/GLOFAATMDPNDNT EXPORT.csv
+10 dictionary/KLAH EXPORT.csv
+447 dictionary/KNA1 EXPORT.csv
+447 dictionary/KNB1 EXPORT.csv
+333 dictionary/KNBK EXPORT.csv
+953 dictionary/KNC1 EXPORT.csv
+344 dictionary/KNC3 EXPORT.csv
+65 dictionary/KSML EXPORT.csv
+2298 dictionary/LFA1 EXPORT.csv
+2298 dictionary/LFB1 EXPORT.csv
+2276 dictionary/LFBK EXPORT.csv
+3371 dictionary/LFC1 EXPORT.csv
+2262 dictionary/LFC3 EXPORT.csv
+48772 dictionary/LIKP EXPORT.csv
+9155 dictionary/MAKT EXPORT.csv
+4611 dictionary/MARA EXPORT.csv
+5374 dictionary/MARC EXPORT.csv
+3102 dictionary/MARD EXPORT.csv
+21943 dictionary/MARM EXPORT.csv
+4239 dictionary/MBEW EXPORT.csv
+23007 dictionary/MCH1 EXPORT.csv
+14879 dictionary/MCHA EXPORT.csv
+494 dictionary/PROJ EXPORT.csv
+1424 dictionary/PRPS EXPORT.csv
+952 dictionary/SKA1 EXPORT.csv
+1891 dictionary/SKAT EXPORT.csv
+952 dictionary/SKB1 EXPORT.csv
+2 dictionary/T001 EXPORT.csv
+25 dictionary/T001L EXPORT.csv
+5 dictionary/T001W EXPORT.csv
+19 dictionary/T001Z EXPORT.csv
+378 dictionary/T003 EXPORT.csv
+6 dictionary/T012 EXPORT.csv
+23 dictionary/T012K EXPORT.csv
+610 dictionary/T023 EXPORT.csv
+3 dictionary/T024E EXPORT.csv
+619 dictionary/T024 EXPORT.csv
+884 dictionary/T052 EXPORT.csv
+491 dictionary/T095B EXPORT.csv
+467 dictionary/T095 EXPORT.csv
+3478 dictionary/T156T EXPORT.csv
+373 dictionary/TCKH1 EXPORT.csv
+526 dictionary/TCKH2 EXPORT.csv
+75 dictionary/TCKH3 EXPORT.csv
+3 dictionary/TSPA EXPORT.csv
+97 dictionary/TVBUR EXPORT.csv
+158 dictionary/TVKGR EXPORT.csv
+2 dictionary/TVKO EXPORT.csv
+9 dictionary/TVTW EXPORT.csv
+55498 dictionary/VBAK EXPORT.csv
+76134 dictionary/VBRK EXPORT.csv
+15569 dictionary/VTTK EXPORT.csv
+46914 dictionary/VTTP EXPORT.csv
+97630 bkpf_2023_export.csv
+541188 bkpf_export.csv
+541565 bsas_export.csv
+547690 bse_clr_export.csv
+673520 bseg_2023_export.csv
+3567450 bsis_export.csv
+348361 cobk_export.csv
+2366399 coep_export.csv
+381169 ekbe_export.csv
+7401392 faglflexa_export.csv
+3897990 faglflext_export.csv
+215409 lips_export.csv
+318802 matdoc_export.csv
+201719 mkpf_export.csv
+201719 mseg_export.csv
+1939976 prcd_elements_export.csv
+181120 vbap_export.csv
+607651 vbfa_export.csv
+453205 vbrp_export.csv

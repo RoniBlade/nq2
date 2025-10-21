@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2023 Evolveum
+  ~
+  ~ This work is dual-licensed under the Apache License 2.0
+  ~ and European Union Public License. See LICENSE file for details.
+  -->
+<!DOCTYPE html>
+<html xmlns:wicket="http://wicket.apache.org">
+<wicket:panel>
+    <div class="d-flex gap-2 m-2 align-items-center">
+        <h3 wicket:id="title" class="m-0"/>
+        <div wicket:id="objectType" class="mb-auto"/>
+        <div wicket:id="lifecycleState" class="mb-auto"/>
+        <div wicket:id="configuration" class="mb-auto"/>
+        <div wicket:id="tasks" class="mb-auto"/>
+        <div wicket:id="showStatistics" class="ml-auto mb-auto"/>
+    </div>
+
+    <wicket:enclosure child="defaultOperationalPolicies">
+        <div class="d-flex mb-2 ml-2 mr-2 align-items-center text-sm">
+            <i class="fa-solid fa-tag text-success mr-1"/>
+            <span class="text-secondary text-truncate" wicket:id="defaultOperationalPolicies"/>
+        </div>
+    </wicket:enclosure>
+
+    <div wicket:id="chartContainer">
+        <div class="col-12" style="position: relative; height:20vh; width:80vw">
+            <canvas wicket:id="statistics"></canvas>
+        </div>
+    </div>
+
+    <div wicket:id="table"/>
+</wicket:panel>
+</html>

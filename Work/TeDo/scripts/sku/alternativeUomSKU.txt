@@ -1,0 +1,101 @@
+WITH
+-- проверка таблицы alternativeuomsku
+-- блок проверки полноты по количеству
+        au_c1 AS (SELECT 'alternativeuomsku' AS table_name, COUNT(*) 
+                  FROM (SELECT * FROM target_edw.alternativeuomsku a
+                        JOIN target_edw.skuexternalcode s ON a.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        au_c2 AS (SELECT 'alternativeuomsku' AS table_name, COUNT(*)
+                  FROM (SELECT DISTINCT s.externalid, a.numerator
+                        FROM loading_dms."DimProduct_" d
+                        JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+                        JOIN target_edw.alternativeuomsku a ON a.skuid = s.skuid)
+                 ),
+-- блок проверки наличия дубликатов
+        au_u1 AS (SELECT 'alternativeuomsku' AS table_name, COUNT(*)
+                  FROM (SELECT * FROM target_edw.alternativeuomsku a
+                        JOIN target_edw.skuexternalcode s ON a.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        au_u2 AS (SELECT 'alternativeuomsku' AS table_name, COUNT(*)
+                  FROM (SELECT DISTINCT * FROM target_edw.alternativeuomsku a
+                        JOIN target_edw.skuexternalcode s ON a.skuid = s.skuid AND s.sourceid = 5)
+                 ),
+        -- Блок проверки полноты построчно -- target -> staging
+        au_cfts AS (
+            SELECT a.skuid::TEXT, CAST(a.numerator AS INTEGER)::TEXT 
+            FROM target_edw.alternativeuomsku a
+            JOIN target_edw.skuexternalcode s 
+                ON a.skuid = s.skuid AND s.sourceid = 5
+            EXCEPT 
+            SELECT DISTINCT s.skuid::TEXT, CAST(d.packageqty AS INTEGER)::TEXT
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.productkey AND s.sourceid = 5
+        ),
+        au_cftsr AS (
+            SELECT 'alternativeuomsku' AS table_name, COUNT(*) 
+            FROM au_cfts
+        ),
+
+         -- Блок проверки полноты построчно -- staging -> target
+        au_cfst AS (
+            SELECT DISTINCT s.skuid::TEXT, CAST(d.packageqty AS INTEGER)::TEXT
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.productkey AND s.sourceid = 5
+            EXCEPT 
+            SELECT a.skuid::TEXT, CAST(a.numerator AS INTEGER)::TEXT 
+            FROM target_edw.alternativeuomsku a
+            JOIN target_edw.skuexternalcode s 
+                ON a.skuid = s.skuid AND s.sourceid = 5
+        ),
+        au_cfstr AS (
+            SELECT 'alternativeuomsku' AS table_name, COUNT(*) 
+            FROM au_cfst
+        ),
+        -- Проверка количества external кодов
+        au_ec1 AS (
+            SELECT 'alternativeuomsku' AS table_name, COUNT(DISTINCT a.skuid) 
+            FROM target_edw.alternativeuomsku a
+            JOIN target_edw.skuexternalcode s 
+                ON a.skuid = s.skuid AND s.sourceid = 5
+        ),
+        au_ec2 AS (
+            SELECT 'alternativeuomsku' AS table_name, COUNT(DISTINCT d.ProductKey) 
+            FROM loading_dms."DimProduct_" d
+            JOIN target_edw.skuexternalcode s 
+                ON s.externalid = d.ProductKey AND s.sourceid = 5
+        ),
+-- сборка вывода
+        au AS (SELECT 
+                au_c1.table_name,
+                CASE 
+                    WHEN au_c1.count = au_c2.count THEN 'done'
+                    ELSE 'fail'
+                END AS completness,
+                CASE 
+                    WHEN au_u1.count = au_u2.count THEN 'done'
+                    ELSE 'fail'
+                END AS unique,
+                CASE 
+                    WHEN au_cfstr.count = 0 AND au_cftsr.count = 0 THEN 'done'
+                    ELSE 'fail'
+                END AS "completness per row",
+                CASE 
+                    WHEN au_ec1.count = au_ec2.count THEN 'done'
+                    ELSE 'fail'
+                END AS "external code check"
+              FROM au_c1
+              JOIN au_c2 ON au_c1.table_name = au_c2.table_name
+              JOIN au_u1 ON au_c1.table_name = au_u1.table_name
+              JOIN au_u2 ON au_c1.table_name = au_u2.table_name
+              JOIN au_cftsr ON au_c1.table_name = au_cftsr.table_name
+              JOIN au_cfstr ON au_c1.table_name = au_cfstr.table_name
+              JOIN au_ec1 ON au_c1.table_name = au_ec1.table_name
+              JOIN au_ec2 ON au_c1.table_name = au_ec2.table_name)
+SELECT * FROM au;
+
+
+
+
+

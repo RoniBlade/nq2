@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Perf Log Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --bg2: #0f1720;
+        --bg3: #111a23;
+        --text: #f8fafc;
+        --muted: #9aa8ba;
+        --primary: #ef4444;
+        --primary2: #f87171;
+        --grid: rgba(248, 250, 252, 0.12);
+        --border: rgba(255, 255, 255, 0.08);
+        --shadow: 0 8px 30px rgba(0, 0, 0, 0.35),
+          inset 0 1px rgba(255, 255, 255, 0.06);
+        --h-small: 320px;
+        --h-large: 520px;
+      }
+      body {
+        background: radial-gradient(
+            1200px 560px at -10% -10%,
+            rgba(239, 68, 68, 0.12),
+            transparent
+          ),
+          radial-gradient(
+            1000px 500px at 110% 10%,
+            rgba(248, 113, 113, 0.1),
+            transparent
+          ),
+          var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 22px 14px;
+        transition: max-width 0.2s ease;
+      }
+      body.wide .wrap {
+        max-width: 1680px;
+      }
+      .card {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.03),
+          rgba(255, 255, 255, 0.01)
+        );
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+      }
+      .btn {
+        background: var(--primary);
+        color: #0b0f14;
+        font-weight: 800;
+        border-radius: 12px;
+        padding: 0 0.9rem;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .btn-ghost {
+        background: var(--bg2);
+        color: #e5e7eb;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0 0.9rem;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .tab {
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.7rem;
+        background: var(--bg2);
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .tab.active {
+        background: #1a2430;
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      .pill {
+        background: var(--bg2);
+        border-radius: 10px;
+        padding: 0.35rem 0.6rem;
+        color: var(--muted);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          monospace;
+      }
+
+      .pbar {
+        width: 100%;
+        height: 10px;
+        background: #0f1a23;
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .pfill {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          #f43f5e 0%,
+          #ef4444 50%,
+          #f87171 100%
+        );
+        width: 0%;
+        border-right: 1px solid #ffffff33;
+        transition: width 0.18s ease;
+      }
+
+      .scrollarea {
+        scrollbar-width: thin;
+        scrollbar-color: #ef4444 #0f1720;
+        -webkit-overflow-scrolling: touch;
+      }
+      .scrollarea::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+      }
+      .scrollarea::-webkit-scrollbar-thumb {
+        background: #ef4444;
+        border-radius: 999px;
+        border: 2px solid #0f1720;
+      }
+      .scrollarea::-webkit-scrollbar-track {
+        background: #0f1720;
+      }
+
+      #console {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        height: 110px;
+      }
+      #console pre {
+        white-space: pre-wrap;
+        line-height: 1.2;
+      }
+
+      .h-small {
+        height: var(--h-small);
+      }
+      body.wide .h-small {
+        height: 380px;
+      }
+      .h-large {
+        height: var(--h-large);
+      }
+      body.wide .h-large {
+        height: 600px;
+      }
+
+      .dropzone {
+        background: var(--bg2);
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        text-align: center;
+        padding: 18px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .dropzone:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary) inset;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="flex items-center gap-3 mb-4">
+        <h1 class="text-4xl md:text-5xl font-black">
+          Аналитика логов сканирования
+        </h1>
+        <div class="ml-auto">
+          <button id="wideBtn" class="btn-ghost">Широкий режим</button>
+        </div>
+      </div>
+
+      <!-- controls -->
+      <div class="card p-4 mb-5">
+        <!-- две колонки одинаковой высоты -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+          <!-- LEFT: Scan -->
+          <div class="xl:col-span-8 flex flex-col">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <div class="md:col-span-7">
+                <label class="block text-sm font-semibold mb-1">Путь</label>
+                <input
+                  id="pathInp"
+                  class="w-full rounded-xl px-3 py-2 bg-[#0f1720] border border-white/10"
+                  value="logs"
+                />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-semibold mb-1"
+                  >Расширение</label
+                >
+                <select
+                  id="extSel"
+                  class="w-full rounded-xl px-3 py-2 bg-[#0f1720] border border-white/10"
+                >
+                  <option>.log</option>
+                  <option>.txt</option>
+                  <option>.out</option>
+                  <option>все</option>
+                </select>
+              </div>
+              <div class="md:col-span-3">
+                <label class="block text-sm font-semibold mb-1"
+                  >Исключить (regex)</label
+                >
+                <input
+                  id="excludeInp"
+                  placeholder="например: (old|backup|\\.bak$)"
+                  class="w-full rounded-xl px-3 py-2 bg-[#0f1720] border border-white/10"
+                />
+              </div>
+            </div>
+            <!-- низ колонки: чекбокс «только кэш», взять из кэша, сканировать -->
+            <div class="mt-auto pt-3 flex items-center gap-2">
+              <div class="text-sm text-slate-300 mr-auto">
+                файлов: <span id="filesCount">—</span>
+              </div>
+              <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  id="cacheOnly"
+                  type="checkbox"
+                  class="accent-[#ef4444]"
+                />
+                только кэш
+              </label>
+              <button id="fromCacheBtn" class="btn-ghost">Взять из кэша</button>
+              <button id="scanBtn" class="btn">Сканировать</button>
+            </div>
+          </div>
+
+          <!-- RIGHT: Upload -->
+          <div class="xl:col-span-4 flex flex-col">
+            <label class="dropzone cursor-pointer flex-1">
+              <input id="files" type="file" multiple class="hidden" />
+              <div class="text-slate-200 font-semibold">
+                Выберите или перетащите файлы
+              </div>
+              <div class="text-xs text-slate-400 mt-1">
+                поддерживается множественный выбор; читаем .log и .log.gz
+              </div>
+            </label>
+            <div class="pt-2 flex items-center">
+              <div class="text-sm text-slate-300 mr-auto">
+                выбрано: <span id="uploadCount">0</span>
+              </div>
+              <button id="uploadBtn" class="btn">Загрузить</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 text-sm" id="statusTxt">Ожидаю запуска…</div>
+        <div class="pbar mt-2"><div class="pfill" id="pfill"></div></div>
+        <div id="console" class="mt-3 overflow-auto scrollarea">
+          <pre id="consolePre" class="mono text-[13px]"></pre>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div class="flex gap-2 mb-4">
+        <button class="tab active" data-tab="biz">Консольные логи</button>
+        <button class="tab" data-tab="perf">PERF</button>
+        <button class="tab" data-tab="err">Ошибки</button>
+      </div>
+
+      <!-- BIZ -->
+      <section id="biz" class="space-y-4">
+        <div class="card p-4">
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-4" id="kpis"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card p-4">
+            <div class="font-bold mb-2">
+              Плотность пользователей (гистограмма, агрегаты)
+            </div>
+            <div id="barUsers" class="h-small"></div>
+          </div>
+          <div class="card p-4">
+            <div class="font-bold mb-2">
+              Ретраи — распределение макс. попытки
+            </div>
+            <div id="barRetry" class="h-small"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card p-4">
+            <div class="font-bold mb-2">
+              Топ IP по сумме пользователей (top 15)
+            </div>
+            <div id="ipTop" class="h-small"></div>
+          </div>
+          <div class="card p-4">
+            <div class="font-bold mb-2">Топ IP с 0 пользователями</div>
+            <div class="max-h-[320px] overflow-auto pr-1 scrollarea">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-[#0f1720]">
+                  <tr>
+                    <th class="text-left">IP</th>
+                    <th class="text-left">times</th>
+                  </tr>
+                </thead>
+                <tbody id="zeroIps"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PERF -->
+      <section id="perf" class="hidden space-y-4">
+        <div class="card p-4">
+          <div class="font-bold mb-2">Компоненты (avg_ms и p95, top 30)</div>
+          <div id="barComp" class="h-large"></div>
+        </div>
+        <div class="card p-4">
+          <div class="font-bold mb-2">Фазы (avg_ms, top 30)</div>
+          <div id="barPhase" class="h-large"></div>
+        </div>
+        <div class="card p-4">
+          <div class="font-bold mb-2">Справка по компонентам</div>
+          <div id="help" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+      </section>
+
+      <!-- ERR -->
+      <section id="err" class="hidden space-y-4">
+        <div class="card p-4">
+          <div class="font-bold mb-2">Категории ошибок</div>
+          <div id="errCats" class="h-small"></div>
+        </div>
+        <div class="card p-4">
+          <div class="font-bold mb-2">Ошибки (первые 40 строк)</div>
+          <div
+            id="errList"
+            class="space-y-2 max-h-[300px] overflow-auto pr-1 scrollarea"
+          ></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let PAYLOAD = null,
+        POLL = null,
+        JOB = null,
+        LAST_FPR = null,
+        LAST_FROM_CACHE = false,
+        LAST_POLL_T = null;
+
+      const RED = getComputedStyle(document.documentElement)
+        .getPropertyValue("--primary")
+        .trim();
+      const RED2 = getComputedStyle(document.documentElement)
+        .getPropertyValue("--primary2")
+        .trim();
+      const TEXT = getComputedStyle(document.documentElement)
+        .getPropertyValue("--text")
+        .trim();
+      const GRID = getComputedStyle(document.documentElement)
+        .getPropertyValue("--grid")
+        .trim();
+
+      function setActive(tab) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll("section")
+          .forEach((s) => s.classList.add("hidden"));
+        document
+          .querySelector(`.tab[data-tab="${tab}"]`)
+          .classList.add("active");
+        document.getElementById(tab).classList.remove("hidden");
+      }
+      document
+        .querySelectorAll(".tab")
+        .forEach((b) => (b.onclick = () => setActive(b.dataset.tab)));
+      document.getElementById("wideBtn").onclick = () => {
+        document.body.classList.toggle("wide");
+      };
+
+      function baseLayout(extra = {}) {
+        return Object.assign(
+          {
+            margin: { l: 60, r: 20, t: 20, b: 50 },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(0,0,0,0)",
+            font: { color: TEXT, size: 13 },
+            showlegend: false,
+            bargap: 0.25,
+            xaxis: { gridcolor: GRID, zeroline: false, tickcolor: GRID },
+            yaxis: { gridcolor: GRID, zeroline: false, tickcolor: GRID },
+            hoverlabel: {
+              bgcolor: "#111827",
+              bordercolor: "#111827",
+              font: { color: "#fff" },
+            },
+            transition: { duration: 200 },
+          },
+          extra
+        );
+      }
+
+      function noData(id, text = "Нет данных") {
+        Plotly.purge(id);
+        document.getElementById(
+          id
+        ).innerHTML = `<div class="text-center text-sm text-slate-300 py-8">${text}</div>`;
+      }
+      function fmt(n) {
+        try {
+          return Intl.NumberFormat("ru-RU").format(n);
+        } catch {
+          return n;
+        }
+      }
+      function fmtMs(ms) {
+        if (ms == null || isNaN(ms)) return "—";
+        if (ms < 1000) return `${Math.round(ms)} ms`;
+        if (ms < 60000) return `${(ms / 1000).toFixed(2)} s`;
+        const m = Math.floor(ms / 60000),
+          s = Math.round((ms % 60000) / 1000);
+        return `${m}m ${s}s`;
+      }
+
+      const pfill = document.getElementById("pfill");
+      const statusTxt = document.getElementById("statusTxt");
+      const filesCount = document.getElementById("filesCount");
+      const uploadCount = document.getElementById("uploadCount");
+      const consolePre = document.getElementById("consolePre");
+      function setProgress(p) {
+        pfill.style.width = `${Math.max(0, Math.min(100, p))}%`;
+      }
+      function logConsole(lines) {
+        consolePre.textContent = (lines || []).join("\n");
+        const box = document.getElementById("console");
+        box.scrollTop = box.scrollHeight;
+      }
+
+      const COMP_HELP = {
+        ScanTaskWorker:
+          "Выполнение одной задачи: подготовка вызовов, внешние API/драйверы, сбор counts (users), отправка результата.",
+        "ScanTaskCreator.pageLoop":
+          "Оркестрация: постраничный обход источника, разбиение на подзадачи и постановка в очередь.",
+        "ScanTaskCreator.scanOnce":
+          "Один проход сканирования: подготовка параметров и публикация одной задачи.",
+        "AccountConsumer.poll":
+          "Чтение результатов из брокера и доставка до сервисного уровня.",
+        "AccountConsumer.upsertChunk":
+          "Пакетная запись полученных аккаунтов в БД.",
+        "AccountService.upsertBatch":
+          "Батчевый upsert аккаунтов/связок в транзакции.",
+        "AccountService.insertGroups": "Создание групп/категорий в БД.",
+        "AccountService.insertAccountGroupRelations":
+          "Связи аккаунт↔группа (many-to-many).",
+        "AccountService.markDeadForServers":
+          "Пометка неактуальных записей для выбранных серверов.",
+        "AccountService.fetchAccountIds": "Чтение идентификаторов аккаунтов.",
+        "AccountService.fetchGroupIds": "Чтение идентификаторов групп.",
+        "AccountService.deleteDeadLinksByServers":
+          "Очистка висячих связей по серверам.",
+        "AccountService.upsertAccountsTwoStep":
+          "Двухэтапный upsert с временными таблицами.",
+      };
+
+      function renderBiz() {
+        const s = PAYLOAD.scans_summary;
+        const k = document.getElementById("kpis");
+        k.innerHTML = "";
+        if (!s) {
+          k.innerHTML = '<div class="pill">Нет данных</div>';
+          ["barUsers", "barRetry", "ipTop"].forEach((id) => noData(id));
+          document.getElementById("zeroIps").innerHTML = "";
+          return;
+        }
+
+        const P = PAYLOAD.users_percentiles || {};
+        [
+          ["Всего задач", fmt(s.total_tasks)],
+          ["Уникальных IP", fmt(s.unique_ip)],
+          ["С аккаунтами (>0)", fmt(s.with_accounts)],
+          ["Без аккаунтов (=0)", fmt(s.zero_accounts)],
+          ["Среднее время на задачу", fmtMs(s.avg_task_ms)],
+          ["Медиана / p95 users", `${fmt(P.p50 || 0)} / ${fmt(P.p95 || 0)}`],
+        ].forEach(([t, v]) => {
+          const el = document.createElement("div");
+          el.innerHTML = `<div class="pill text-xs mb-1">${t}</div><div class="text-3xl font-extrabold">${v}</div>`;
+          k.appendChild(el);
+        });
+
+        const H = PAYLOAD.users_hist || { x: [], y: [] };
+        const HM = PAYLOAD.users_hist_meta || {};
+        if (!H.x.length) noData("barUsers");
+        else {
+          Plotly.newPlot(
+            "barUsers",
+            [
+              {
+                type: "bar",
+                x: H.x,
+                y: H.y,
+                marker: { color: RED, line: { color: "#ffffff22", width: 1 } },
+                hovertemplate: "users=%{x:.0f}<br>tasks=%{y}<extra></extra>",
+              },
+            ],
+            baseLayout({
+              xaxis: {
+                title:
+                  "users (клип p99 = " +
+                  (HM.clip_to?.toFixed?.(0) || "—") +
+                  ", max=" +
+                  (HM.max_raw || "—") +
+                  ")",
+              },
+              yaxis: { title: "tasks" },
+            }),
+            { displayModeBar: false }
+          );
+        }
+
+        const RD = PAYLOAD.retries_dist || [];
+        if (!RD.length) noData("barRetry");
+        else {
+          Plotly.newPlot(
+            "barRetry",
+            [
+              {
+                type: "bar",
+                x: RD.map((r) => r.attempt),
+                y: RD.map((r) => r.count),
+                marker: { color: RED2 },
+              },
+            ],
+            baseLayout({
+              xaxis: { title: "max_attempt", dtick: 1, tick0: 1 },
+              yaxis: { title: "tasks" },
+            }),
+            { displayModeBar: false }
+          );
+        }
+
+        const ipTop = PAYLOAD.users_per_ip_top || [];
+        if (!ipTop.length) noData("ipTop");
+        else {
+          const arr = ipTop.slice().reverse();
+          Plotly.newPlot(
+            "ipTop",
+            [
+              {
+                type: "bar",
+                x: arr.map((a) => a.users_total),
+                y: arr.map((a) => a.ip || "—"),
+                orientation: "h",
+                marker: { color: RED },
+                hovertemplate: "%{y}: %{x}<extra></extra>",
+              },
+            ],
+            baseLayout({
+              xaxis: { title: "users_total" },
+              margin: { l: 140, r: 20, t: 20, b: 40 },
+            }),
+            { displayModeBar: false }
+          );
+        }
+
+        const zt = document.getElementById("zeroIps");
+        zt.innerHTML = "";
+        (PAYLOAD.zero_ip_top || []).forEach((r) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td class="mono">${r.ip ?? "—"}</td><td>${fmt(
+            r.times
+          )}</td>`;
+          zt.appendChild(tr);
+        });
+      }
+
+      function renderPerf() {
+        const comps = PAYLOAD.perf_components || [];
+        if (!comps.length) noData("barComp");
+        else {
+          const arr = comps.slice(0, 30).reverse(); // top 30
+          Plotly.newPlot(
+            "barComp",
+            [
+              {
+                type: "bar",
+                x: arr.map((a) => a.avg_ms),
+                y: arr.map((a) => a.component_pretty || a.component),
+                orientation: "h",
+                name: "avg_ms",
+                marker: { color: RED },
+              },
+              {
+                type: "bar",
+                x: arr.map((a) => a.p95_ms),
+                y: arr.map((a) => a.component_pretty || a.component),
+                orientation: "h",
+                name: "p95",
+                marker: { color: RED2 },
+              },
+            ],
+            baseLayout({
+              xaxis: { title: "ms" },
+              margin: { l: 260, r: 30, t: 20, b: 40 },
+              showlegend: true,
+              barmode: "group",
+            }),
+            { displayModeBar: false }
+          );
+        }
+
+        const phases = PAYLOAD.perf_phase_means || [];
+        if (!phases.length) noData("barPhase");
+        else {
+          const arr = phases.slice(0, 30).reverse();
+          Plotly.newPlot(
+            "barPhase",
+            [
+              {
+                type: "bar",
+                x: arr.map((p) => p.avg_ms),
+                y: arr.map((p) => p.phase),
+                orientation: "h",
+                marker: { color: RED },
+              },
+            ],
+            baseLayout({
+              xaxis: { title: "avg_ms" },
+              margin: { l: 240, r: 30, t: 20, b: 40 },
+            }),
+            { displayModeBar: false }
+          );
+        }
+
+        const helpBox = document.getElementById("help");
+        helpBox.innerHTML = "";
+        const present = new Set(
+          (PAYLOAD.perf_components || []).map((c) => c.component)
+        );
+        Object.entries(COMP_HELP).forEach(([name, text]) => {
+          if (!present.has(name)) return;
+          const el = document.createElement("div");
+          el.className = "p-3 rounded-lg border border-white/10 bg-[#111a23]";
+          el.innerHTML = `<div class="font-semibold mb-1 mono">${name}</div><div class="text-sm text-slate-300">${text}</div>`;
+          helpBox.appendChild(el);
+        });
+      }
+
+      function renderErr() {
+        const cats = PAYLOAD.error_categories || [];
+        if (!cats.length) noData("errCats");
+        else {
+          Plotly.newPlot(
+            "errCats",
+            [
+              {
+                type: "bar",
+                x: cats.map((c) => c.category),
+                y: cats.map((c) => c.n),
+                marker: { color: RED },
+              },
+            ],
+            baseLayout({
+              xaxis: { title: "category" },
+              yaxis: { title: "count" },
+            }),
+            { displayModeBar: false }
+          );
+        }
+        const box = document.getElementById("errList");
+        box.innerHTML = "";
+        const errs = PAYLOAD.error_lines_preview || [];
+        if (!errs.length) {
+          box.innerHTML =
+            '<div class="text-sm text-slate-300">Нет данных</div>';
+          return;
+        }
+        errs.forEach((e) => {
+          const row = document.createElement("div");
+          row.className =
+            "rounded-md border border-white/10 bg-[#111a23] px-3 py-2";
+          row.innerHTML = `<span class="inline-block text-xs px-2 py-0.5 mr-2 rounded-full bg-[#1f2937]">${e.category}</span>
+                     <span class="mono text-sm">${e.line}</span>`;
+          box.appendChild(row);
+        });
+      }
+
+      // restore & auto-refresh
+      const LS_KEY = "plv:last";
+      function saveLocal(payload, meta = {}) {
+        try {
+          localStorage.setItem(
+            LS_KEY,
+            JSON.stringify({ payload, meta, ts: Date.now() })
+          );
+        } catch {}
+      }
+      function restoreLocal() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return false;
+          const { payload } = JSON.parse(raw);
+          if (!payload) return false;
+          PAYLOAD = payload;
+          renderBiz();
+          renderPerf();
+          renderErr();
+          statusTxt.textContent = "Восстановлено из кэша браузера";
+          setProgress(100);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      async function restoreFromServer() {
+        try {
+          const r = await fetch("/api/last");
+          if (!r.ok) return false;
+          const last = await r.json();
+          if (!last || !Object.keys(last).length) return false;
+          PAYLOAD = last;
+          LAST_FPR = last._meta && last._meta.fingerprint;
+          renderBiz();
+          renderPerf();
+          renderErr();
+          statusTxt.textContent = "Загружено с сервера (последний результат)";
+          setProgress(100);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      async function pollLastIfIdle() {
+        if (JOB) return;
+        const now = Date.now();
+        if (LAST_POLL_T && now - LAST_POLL_T < 5000) return;
+        LAST_POLL_T = now;
+        try {
+          const r = await fetch("/api/last");
+          if (!r.ok) return;
+          const last = await r.json();
+          const fpr = last && last._meta && last._meta.fingerprint;
+          if (fpr && fpr !== LAST_FPR) {
+            PAYLOAD = last;
+            LAST_FPR = fpr;
+            renderBiz();
+            renderPerf();
+            renderErr();
+            statusTxt.textContent = "Обновлено (последний результат с сервера)";
+            setProgress(100);
+            saveLocal(PAYLOAD, last._meta || {});
+          }
+        } catch {}
+      }
+      setInterval(pollLastIfIdle, 3000);
+
+      // ---------- actions ----------
+      async function startScan() {
+        if (POLL) {
+          clearInterval(POLL);
+          POLL = null;
+        }
+        const path = document.getElementById("pathInp").value || "logs";
+        const ext = document.getElementById("extSel").value || ".log";
+        const exclude_regex = document.getElementById("excludeInp").value || "";
+        const use_cache_only = document.getElementById("cacheOnly").checked;
+
+        statusTxt.textContent = use_cache_only
+          ? "Пробую взять только из кэша…"
+          : "Запускаю…";
+        setProgress(0);
+        filesCount.textContent = "—";
+        logConsole([]);
+
+        const r = await fetch("/api/scan/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path,
+            ext,
+            exclude_regex,
+            recursive: true,
+            use_cache: true,
+            use_cache_only,
+          }),
+        });
+        const j = await r.json();
+        if (!j.job) {
+          statusTxt.textContent = "Ошибка запуска";
+          return;
+        }
+        JOB = j.job;
+        statusTxt.textContent = use_cache_only
+          ? "Проверяю кэш…"
+          : "Сканирование папки…";
+        POLL = setInterval(pollProgress, 700);
+      }
+
+      async function pollProgress() {
+        if (!JOB) return;
+        const r = await fetch("/api/scan/progress?job=" + JOB);
+        if (!r.ok) return;
+        const j = await r.json();
+        const total = j.total || 0,
+          done = j.done || 0;
+        const pct =
+          typeof j.percent === "number"
+            ? j.percent
+            : total > 0
+            ? Math.floor((done / total) * 100)
+            : 0;
+        setProgress(pct);
+        filesCount.textContent = total || "—";
+        logConsole(j.log || []);
+        statusTxt.textContent = `Обработано: ${done}/${total} (${pct}%) • время: ${
+          (j.elapsed || 0).toFixed?.(1) || j.elapsed || 0
+        }s${j.cached ? " (cached)" : ""}`;
+        if (j.state === "done") {
+          clearInterval(POLL);
+          POLL = null;
+          setProgress(100);
+          statusTxt.textContent = "Отображаю результат…";
+          const r2 = await fetch("/api/scan/result?job=" + JOB);
+          const res = await r2.json();
+          JOB = null;
+          PAYLOAD = res.payload || res;
+          LAST_FPR =
+            res.fingerprint ||
+            (PAYLOAD._meta && PAYLOAD._meta.fingerprint) ||
+            null;
+          renderBiz();
+          renderPerf();
+          renderErr();
+          saveLocal(PAYLOAD, {
+            from_cache: !!res.from_cache,
+            fingerprint: res.fingerprint,
+            duration: res.duration,
+          });
+          statusTxt.textContent = `Готово${
+            res.from_cache ? " (cached)" : ""
+          } за ${(res.duration || res.t_sec || 0).toFixed?.(1) || "0.0"}s`;
+        }
+        if (j.state === "error") {
+          clearInterval(POLL);
+          POLL = null;
+          JOB = null;
+          statusTxt.textContent =
+            j.error === "cache_miss"
+              ? "Кэша нет для этих параметров"
+              : "Ошибка: " + (j.error || "unknown");
+        }
+      }
+
+      // явное «Взять из кэша» без запуска парсинга
+      async function getFromCache() {
+        const path = document.getElementById("pathInp").value || "logs";
+        const ext = document.getElementById("extSel").value || ".log";
+        const exclude_regex = document.getElementById("excludeInp").value || "";
+        statusTxt.textContent = "Проверяю локальный кэш сервера…";
+        setProgress(0);
+        try {
+          const r = await fetch("/api/cache/lookup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path, ext, exclude_regex, recursive: true }),
+          });
+          const data = await r.json();
+          if (data.hit) {
+            PAYLOAD = data.payload || data;
+            LAST_FPR = data.fingerprint || null;
+            filesCount.textContent =
+              data.files && data.files.length ? data.files.length : "—";
+            renderBiz();
+            renderPerf();
+            renderErr();
+            setProgress(100);
+            statusTxt.textContent = "Загружено из кэша сервера";
+            saveLocal(PAYLOAD, {
+              from_cache: true,
+              fingerprint: data.fingerprint,
+              duration: 0,
+            });
+          } else {
+            statusTxt.textContent = "Кэш не найден для выбранных параметров";
+            setProgress(0);
+          }
+        } catch (e) {
+          statusTxt.textContent = "Ошибка запроса кэша";
+        }
+      }
+
+      // upload
+      const filesInput = document.getElementById("files");
+      filesInput.addEventListener("change", () => {
+        uploadCount.textContent = filesInput.files.length;
+      });
+      document.getElementById("uploadBtn").onclick = async () => {
+        const fs = filesInput.files;
+        if (!fs || !fs.length) return;
+        setProgress(0);
+        statusTxt.textContent = "Загружаю выбранные…";
+        const fd = new FormData();
+        for (const f of fs) fd.append("files", f);
+        const r = await fetch("/api/upload", { method: "POST", body: fd });
+        const data = await r.json();
+        PAYLOAD = data.payload || data;
+        setProgress(100);
+        statusTxt.textContent = "Готово (upload)";
+        renderBiz();
+        renderPerf();
+        renderErr();
+        saveLocal(PAYLOAD, {
+          from_cache: false,
+          fingerprint: data.fingerprint,
+          duration: 0,
+        });
+      };
+
+      document.getElementById("scanBtn").onclick = startScan;
+      document.getElementById("fromCacheBtn").onclick = getFromCache;
+
+      (async () => {
+        if (await restoreFromServer()) return;
+        if (!restoreLocal()) {
+          statusTxt.textContent = "Ожидаю запуска…";
+          setProgress(0);
+        }
+      })();
+    </script>
+  </body>
+</html>

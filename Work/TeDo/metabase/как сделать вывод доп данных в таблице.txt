@@ -1,0 +1,5 @@
+файлы user.clj - изменение вывода пользователей, добавляем к имени ext_id
+
+PeopleListingApp.jsx - metabase\frontend\src\metabase\admin\people\containers
+
+тут используем

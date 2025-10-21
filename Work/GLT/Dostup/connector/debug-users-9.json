@@ -1,0 +1,12 @@
+[ {
+  "login" : "Adam",
+  "serverId" : 9,
+  "uid" : 1001,
+  "homeDir" : null,
+  "shell" : "powershell",
+  "description" : "",
+  "data" : "",
+  "accountExpires" : null,
+  "lastSeen" : null,
+  "active" : true,
+  "updatedAt"

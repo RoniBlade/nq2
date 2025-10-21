@@ -1,0 +1,121 @@
+WITH
+-- 1. Проверка полноты (количество строк) в target
+sh_c1 AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.skuHierarchy
+),
+-- 2. Проверка полноты (количество строк) в источнике (staging)
+sh_c2 AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT
+         -- Для parentid: вместо прямого PAClassParentKey используем перекодировку:
+         (SELECT she.externalid 
+            FROM target_edw.skuhierarchyexternalcode she 
+           WHERE she.skuhierarchyid = d.PAClassKey) AS parentid,
+         d.PAClassBusinessKey       AS parentbusinessid,
+         d.PAClassParentBusinessKey AS businessid,
+         d.PAClassExtCode           AS shortname,
+         d.PAClassName              AS fullname,
+         d.LevelKey                 AS level,
+         (SELECT se.id 
+            FROM target_edw.statusexternalcode se 
+           WHERE se.sourceid = 5 
+             AND se.externalid = d.StatusKey) AS statusid
+    FROM loading_dms."DimProductAltClassification" d
+  ) t
+),
+-- 3. Проверка наличия дубликатов в target
+sh_u1 AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.skuHierarchy
+),
+sh_u2 AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT *
+    FROM target_edw.skuHierarchy
+  ) t
+),
+-- 4. Проверка полноты построчно – target → staging
+sh_cfts AS (
+  SELECT parentid::TEXT,
+         parentbusinessid::TEXT,
+         businessid::TEXT,
+         shortname::TEXT,
+         fullname::TEXT,
+         level::TEXT,
+         statusid::TEXT
+  FROM target_edw.skuHierarchy
+  EXCEPT
+  SELECT DISTINCT
+         CAST((SELECT she.externalid 
+                 FROM target_edw.skuhierarchyexternalcode she 
+                WHERE she.skuhierarchyid = d.PAClassKey) AS TEXT) AS parentid,
+         CAST(d.PAClassBusinessKey AS TEXT)       AS parentbusinessid,
+         CAST(d.PAClassParentBusinessKey AS TEXT)   AS businessid,
+         CAST(d.PAClassExtCode AS TEXT)             AS shortname,
+         CAST(d.PAClassName AS TEXT)                AS fullname,
+         CAST(d.LevelKey AS TEXT)                   AS level,
+         CAST((SELECT se.id 
+                 FROM target_edw.statusexternalcode se 
+                WHERE se.sourceid = 5 
+                  AND se.externalid = d.StatusKey) AS TEXT) AS statusid
+  FROM loading_dms."DimProductAltClassification" d
+),
+sh_cftsr AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM sh_cfts
+),
+-- 5. Проверка полноты построчно – staging → target
+sh_cfst AS (
+  SELECT DISTINCT
+         CAST((SELECT she.externalid 
+                 FROM target_edw.skuhierarchyexternalcode she 
+                WHERE she.skuhierarchyid = d.PAClassKey) AS TEXT),
+         CAST(d.PAClassBusinessKey AS TEXT),
+         CAST(d.PAClassParentBusinessKey AS TEXT),
+         CAST(d.PAClassExtCode AS TEXT),
+         CAST(d.PAClassName AS TEXT),
+         CAST(d.LevelKey AS TEXT),
+         CAST((SELECT se.id 
+                 FROM target_edw.statusexternalcode se 
+                WHERE se.sourceid = 5 
+                  AND se.externalid = d.StatusKey) AS TEXT)
+  FROM loading_dms."DimProductAltClassification" d
+  EXCEPT
+  SELECT
+         parentid::TEXT,
+         parentbusinessid::TEXT,
+         businessid::TEXT,
+         shortname::TEXT,
+         fullname::TEXT,
+         level::TEXT,
+         statusid::TEXT
+  FROM target_edw.skuHierarchy
+),
+sh_cfstr AS (
+  SELECT 'skuHierarchy' AS table_name,
+         COUNT(*) AS count
+  FROM sh_cfst
+),
+-- Итоговая сборка результата
+sh AS (
+  SELECT
+    sh_c1.table_name,
+    CASE WHEN sh_c1.count = sh_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+    CASE WHEN sh_u1.count = sh_u2.count THEN 'done' ELSE 'fail' END AS unique,
+    CASE WHEN sh_cfstr.count = 0 AND sh_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row"
+  FROM sh_c1
+  JOIN sh_c2 ON sh_c1.table_name = sh_c2.table_name
+  JOIN sh_u1 ON sh_c1.table_name = sh_u1.table_name
+  JOIN sh_u2 ON sh_c1.table_name = sh_u2.table_name
+  JOIN sh_cftsr ON sh_c1.table_name = sh_cftsr.table_name
+  JOIN sh_cfstr ON sh_c1.table_name = sh_cfstr.table_name
+)
+SELECT * FROM sh;

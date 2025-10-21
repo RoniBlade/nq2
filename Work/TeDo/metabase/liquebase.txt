@@ -1,0 +1,47 @@
+ - changeSet:
+      id: v48.00-060
+      author: RoniBlade
+      comment: 'Create core_user_external table'
+      changes:
+        - createTable:
+            tableName: core_user_external
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: core_user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_core_user_external_external_id
+            tableName: core_user_external
+            columns:
+              - column:
+                  name: external_id
+        - addForeignKeyConstraint:
+            baseTableName: core_user_external
+            baseColumnNames: core_user_id
+            constraintName: fk_core_user_external_core_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id

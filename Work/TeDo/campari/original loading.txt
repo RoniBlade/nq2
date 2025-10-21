@@ -1,0 +1,366 @@
+import logging
+
+from datetime import datetime, timedelta, timezone
+
+from airflow import DAG
+
+from airflow.operators.empty import EmptyOperator
+
+from airflow.operators.python import PythonOperator
+
+import pymssql
+
+import psycopg2
+
+from psycopg2.extras import execute_values
+
+import time
+
+
+# Настройка логирования
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+
+# Параметры подключения к базам данных
+
+sql_server_conn_params = {
+
+    'server': '213.79.122.235',
+
+    'user': 'Cube_Campari_SQL',
+
+    'password': 'kCzFuO9vZo1c',
+
+    'database': 'Campari',
+
+    'port': 1433
+
+}
+
+
+pg_conn_params = {
+
+    'dbname': 'postgres',
+
+    'user': 'superuser',
+
+    'password': 'rOGvBCBRDpsWIzyg4epLP7Ow',
+
+    'host': 'qas.PGsilver01.corp.camparirus.ru',
+
+    'port': '5432'
+
+}
+
+
+# Процесс ID
+
+process_id = 18
+
+source_id = 2
+
+
+
+# Функции для повторного подключения к базам данных
+
+def connect_to_sql_server():
+
+    try:
+
+        logger.info("Подключение к SQL Server...")
+
+        return pymssql.connect(**sql_server_conn_params)
+
+    except pymssql.Error as e:
+
+        logger.error(f"Ошибка подключения к SQL Server: {str(e)}")
+
+        time.sleep(5)
+
+        return connect_to_sql_server()
+
+
+def connect_to_postgresql():
+
+    try:
+
+        logger.info("Подключение к PostgreSQL...")
+
+        return psycopg2.connect(**pg_conn_params)
+
+    except psycopg2.Error as e:
+
+        logger.error(f"Ошибка подключения к PostgreSQL: {str(e)}")
+
+        time.sleep(5)
+
+        return connect_to_postgresql()
+
+
+# Функция для получения последней даты InsertDate
+
+def get_last_insert_date(pg_cursor):
+
+    query = """
+
+        SELECT value 
+
+        FROM info_etl."config" 
+
+        WHERE id=34;
+
+    """
+
+    pg_cursor.execute(query)
+
+    result = pg_cursor.fetchone()
+
+
+    if result and result[0]:
+
+        try:
+
+            return datetime.fromisoformat(result[0])
+
+        except ValueError:
+
+            return None
+
+
+    return None
+
+
+# Функция для получения максимальной даты InsertDate из таблицы данных
+
+def get_max_insert_date_from_table(pg_cursor):
+
+    query = """
+
+        SELECT MAX("InsertDate")
+
+        FROM loading_retailexpert."Campari_K1_OLAP";
+
+    """
+
+    pg_cursor.execute(query)
+
+    result = pg_cursor.fetchone()
+
+
+    return result[0] if result else None
+
+
+# Функция для обновления значения в config
+
+def update_config(pg_cursor, value):
+
+    query_update = """
+
+        UPDATE info_etl."config"
+
+        SET value = %s, lastupdatedate = %s
+
+        WHERE id = 34;
+
+    """
+
+    pg_cursor.execute(query_update, (value, datetime.now()))
+
+
+    if pg_cursor.rowcount == 0:
+
+        logger.warning(f"Запись с ключом {key} и process_id {process_id} не найдена для обновления.")
+
+
+
+# Объединенная функция для извлечения, трансформации и загрузки данных
+def etl_process(**kwargs):
+
+    sql_server_connection = connect_to_sql_server()
+    pg_connection = connect_to_postgresql()
+
+    sql_cursor = sql_server_connection.cursor()
+    pg_cursor = pg_connection.cursor()
+
+    logger.info("Получение последней даты вставки из config...")
+
+    last_insert_date = get_last_insert_date(pg_cursor)
+
+    # Если запись в config не найдена, получаем дату из основной таблицы
+    if last_insert_date is None:
+        logger.info("Дата вставки в config не найдена, использование последней даты из таблицы...")
+        last_insert_date = get_max_insert_date_from_table(pg_cursor)
+
+    logger.info(f"Дата последней вставки: {last_insert_date}")
+
+    batch_size = 500000
+    offset = 0
+    columns = None
+    inserted_rows = 0
+    max_insert_date = last_insert_date
+    last_id_value = None  # Переменная для хранения последнего ID
+
+    while True:
+        start_time = time.time()
+
+        try:
+            query = f"""
+                SELECT *
+                FROM Campari_K1_OLAP_
+                WHERE InsertDate > %s
+                ORDER BY InsertDate ASC
+                OFFSET {offset} ROWS
+                FETCH NEXT {batch_size} ROWS ONLY;
+            """
+
+            sql_cursor.execute(query, (last_insert_date,))
+            batch = sql_cursor.fetchall()
+        except pymssql.Error as e:
+            logger.error(f"Ошибка при извлечении данных из SQL Server: {str(e)}")
+            sql_server_connection = connect_to_sql_server()
+            sql_cursor = sql_server_connection.cursor()
+            continue
+
+        if not batch:
+            logger.info("Извлечение данных завершено.")
+            break
+
+        if columns is None:
+            columns = [desc[0] for desc in sql_cursor.description]
+
+        download_time = time.time() - start_time
+        logger.info(f"Извлечено {len(batch)} строк из SQL Server за {download_time:.2f} секунд.")
+
+        # Обновление максимальной даты InsertDate
+        batch_max_insert_date = max(row[columns.index('InsertDate')] for row in batch)
+        if max_insert_date is None or batch_max_insert_date > max_insert_date:
+            max_insert_date = batch_max_insert_date
+
+        # Обновление последнего ID
+        if batch:
+           last_id_value = offset + len(batch)  # Номер строки с учетом смещения
+        else:
+           last_id_value = None  # Если batch пустой, присвоить None
+
+
+        # Подготовка данных для пакетной вставки
+        insert_values = [tuple(row) for row in batch]
+        columns_formatted = ', '.join([f'"{col}"' for col in columns])
+        insert_query = f"INSERT INTO loading_retailexpert.\"Campari_K1_OLAP\" ({columns_formatted}) VALUES %s"
+
+        # Вставка данных пакетами
+        try:
+            upload_start_time = time.time()
+            execute_values(pg_cursor, insert_query, insert_values)
+            pg_connection.commit()
+            upload_time = time.time() - upload_start_time
+            logger.info(f"Загрузка данных в PostgreSQL заняла {upload_time:.2f} секунд.")
+        except psycopg2.Error as e:
+            logger.error(f"Ошибка при загрузке данных в PostgreSQL: {str(e)}")
+            pg_connection = connect_to_postgresql()
+            pg_cursor = pg_connection.cursor()
+            continue
+
+        inserted_rows += len(batch)
+        offset += batch_size
+
+        if len(batch) < batch_size:
+            break
+
+    error_msg = None
+    load_start_time = datetime.now()
+
+    try:
+        # Обновление max InsertDate в config
+        if max_insert_date:
+            update_config(pg_cursor, max_insert_date.isoformat())
+        pg_connection.commit()
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Произошла ошибка: {error_msg}")
+    finally:
+        load_end_time = datetime.now()
+
+        log_query = """
+            INSERT INTO info_etl.log (processid, start_time, end_time, insert, update, delete, error, last_id, last_update_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        pg_cursor.execute(log_query, (
+            process_id,
+            load_start_time,
+            load_end_time,
+            inserted_rows,
+            0,
+            0,
+            error_msg,
+            last_id_value,  # Записываем последний полученный ID
+            max_insert_date  # Записываем дату последней вставки
+        ))
+
+        pg_connection.commit()
+        pg_connection.close()
+        sql_server_connection.close()
+        logger.info("Процесс ETL завершен.")
+
+
+# DAG настройки
+
+default_args = {
+
+    'owner': 'airflow',
+
+    'depends_on_past': True,  # Зависимость от предыдущего запуска
+
+    'start_date': datetime(2024, 7, 24, tzinfo=timezone.utc),
+
+    'retries': 1,
+
+    'retry_delay': timedelta(minutes=5),
+
+    'wait_for_downstream': True,  # Ожидание завершения всех downstream задач
+
+}
+
+
+with DAG(
+
+    'loading_retailexpert',
+
+    default_args=default_args,
+
+    description='ETL процесс из SQL Server в PostgreSQL',
+
+    start_date=datetime(2024, 7, 24, tzinfo=timezone.utc),
+
+    schedule_interval='0 0 * * *', 
+
+    catchup=False,
+
+    tags=['loading', 'retailexpert']
+
+) as dag:
+
+
+    start = EmptyOperator(task_id='start')
+
+
+    task_etl_process = PythonOperator(
+
+        task_id='etl_process',
+
+        python_callable=etl_process
+
+    )
+
+
+    end = EmptyOperator(task_id='end')
+
+
+    # Определение последовательности задач
+
+    start >> task_etl_process >> end
+

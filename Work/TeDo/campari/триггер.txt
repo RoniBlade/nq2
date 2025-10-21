@@ -1,0 +1,72 @@
+CREATE OR REPLACE FUNCTION update_monthly_aggregations()
+RETURNS TRIGGER AS $$
+DECLARE
+    old_year INTEGER;
+    old_month INTEGER;
+    new_year INTEGER;
+    new_month INTEGER;
+    sales_change NUMERIC;
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        new_year := EXTRACT(YEAR FROM NEW."InsertDate");
+        new_month := EXTRACT(MONTH FROM NEW."InsertDate");
+        sales_change := NEW."Продажи в руб.";
+
+        -- Обновляем агрегацию для нового месяца
+        INSERT INTO monthly_aggregations (year, month, total_sales)
+        VALUES (new_year, new_month, sales_change)
+        ON CONFLICT (year, month)
+        DO UPDATE SET total_sales = monthly_aggregations.total_sales + EXCLUDED.total_sales;
+
+    ELSIF (TG_OP = 'UPDATE') THEN
+        old_year := EXTRACT(YEAR FROM OLD."InsertDate");
+        old_month := EXTRACT(MONTH FROM OLD."InsertDate");
+        new_year := EXTRACT(YEAR FROM NEW."InsertDate");
+        new_month := EXTRACT(MONTH FROM NEW."InsertDate");
+
+        IF old_year = new_year AND old_month = new_month THEN
+            -- Если год и месяц не изменились
+            sales_change := NEW."Продажи в руб." - OLD."Продажи в руб.";
+
+            UPDATE monthly_aggregations
+            SET total_sales = total_sales + sales_change
+            WHERE year = new_year AND month = new_month;
+
+        ELSE
+            -- Если год или месяц изменились
+            -- Уменьшаем агрегацию для старого месяца
+            UPDATE monthly_aggregations
+            SET total_sales = total_sales - OLD."Продажи в руб."
+            WHERE year = old_year AND month = old_month;
+
+            -- Увеличиваем агрегацию для нового месяца
+            INSERT INTO monthly_aggregations (year, month, total_sales)
+            VALUES (new_year, new_month, NEW."Продажи в руб.")
+            ON CONFLICT (year, month)
+            DO UPDATE SET total_sales = monthly_aggregations.total_sales + EXCLUDED.total_sales;
+        END IF;
+
+    ELSIF (TG_OP = 'DELETE') THEN
+        old_year := EXTRACT(YEAR FROM OLD."InsertDate");
+        old_month := EXTRACT(MONTH FROM OLD."InsertDate");
+        sales_change := -OLD."Продажи в руб.";
+
+        UPDATE monthly_aggregations
+        SET total_sales = total_sales + sales_change
+        WHERE year = old_year AND month = old_month;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TABLE IF NOT EXISTS monthly_aggregations (
+    id bigserial NOT NULL,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    total_sales NUMERIC NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+drop table

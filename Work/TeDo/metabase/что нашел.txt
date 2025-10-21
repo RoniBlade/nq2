@@ -1,0 +1,29 @@
+enterprise\backend\src\metabase_enterprise\advanced_permissions\query_processor\middleware\permissions.clj
+
+(def ^:private max-rows-in-limited-downloads 10000)
+
+
+enterprise\backend\src\metabase_enterprise\audit_app\pages\dashboards.clj
+
+
+frontend\src\metabase-lib\queries\utils\index.js
+// The backend won't return more than 2,000 rows so in cases where we
+// need to communicate or use that, use this constant
+export const HARD_ROW_LIMIT = 2000;
+
+
+src\metabase\api\card.clj
+:size-mb     (/ (.length csv-file) 50000000.0)
+metabase\src\metabase\upload.clj
+
+
+
+
+src\metabase\db\connection_pool_setup.clj
+
+metabase\src\metabase\driver\util.clj - db-connection-timeout-ms
+
+src\metabase\db\env.clj - LOCK_TIMEOUT
+
+MB_JETTY_ASYNC_RESPONSE_TIMEOUT
+

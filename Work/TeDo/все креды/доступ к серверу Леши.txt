@@ -1,0 +1,2 @@
+ssh adam@178.213.115.64 -p 2222
+e7SW1fChB2sd

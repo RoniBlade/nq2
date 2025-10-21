@@ -1,0 +1,16 @@
+1) Сделать DDL скрипт по модели
+2) Перенести данные по экселю в созданную модель с помощью NiFi
+
+
+target edw
+source edw
+
+https://davidecamparimilano.sharepoint.com/sites/CRUS_INBOUND/Shared%20Documents/Forms/AllItems.aspx?ga=1&id=%2Fsites%2FCRUS_INBOUND%2FShared%20Documents%2F14_ProjectManagementOffice%2F04_Tedo_Localization%2F20_DWH%2BBI%2F01_Analysis_and_design%2FArchitecture%20TO-BE%2FEDW%2FER%20model&viewid=af1544da-e851-48af-8b18-fab26321edcb
+
+
+https://davidecamparimilano.sharepoint.com/sites/CRUS_INBOUND/Shared%20Documents/Forms/AllItems.aspx?ga=1&id=%2Fsites%2FCRUS_INBOUND%2FShared%20Documents%2F14_ProjectManagementOffice%2F04_Tedo_Localization%2F20_DWH%2BBI%2F01_Analysis_and_design%2FData%20flows%2FПараметры%20подключения%20к%20источникам&viewid=af1544da-e851-48af-8b18-fab26321edcb
+
+
+https://davidecamparimilano.sharepoint.com/:u:/r/sites/CRUS_INBOUND/_layouts/15/Doc.aspx?sourcedoc=%7B49CF436E-C916-4983-8436-C604429F5F04%7D&file=EDW_structure_v6.vsdx&action=default&mobileredirect=true&wdsle=0
+
+https://davidecamparimilano.sharepoint.com/:u:/r/sites/CRUS_INBOUND/_layouts/15/Doc.aspx?sourcedoc=%7B49B05C89-4436-45F5-B5F3-D75686AB35F1%7D&file=ER%20EDW%20Model%20v2.vsdx&action=default&mobileredirect=true&wdsle=0

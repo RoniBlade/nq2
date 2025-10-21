@@ -1,0 +1,322 @@
+WITH
+-- Проверка таблицы dictionarySKU
+-- Блок проверки полноты по количеству
+dsku_c1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) 
+    FROM (
+        SELECT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+dsku_c2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+               d.UnitWeight, d.productVolume, CAST(d.ProductCombineKey AS VARCHAR), 
+               CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku,
+               CAST(d.ProductBrandID AS BIGINT), 
+               CAST(d.ProductTypeId AS BIGINT), 
+               CAST(d.ProductBusinessKey AS BIGINT), 
+               d.StatusKey, 
+               CAST(d.ProductGroupID AS BIGINT)
+        FROM loading_dms."DimProduct_" d
+        JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    )
+),
+
+-- Блок проверки наличия дубликатов
+dsku_u1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+dsku_u2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT DISTINCT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+
+-- Проверка полноты построчно -- target -> staging
+dsku_cfts AS (
+    SELECT d.id, d.shortname, d.fullname, d.description, d.grossweight, d.volume, 
+           a_sku.skuarticleid AS SKUArticleID, 
+           d.iscamparisku,
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.skuarticleid = d.SKUArticleID AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.alcoholtypeid = d.AlcoholTypeID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.brandid = d.brandid AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.skutypeid = d.skutypeid AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.id = d.statusID AND a_status.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+           d.UnitWeight, d.productVolume, a_sku.skuarticleid AS SKUArticleID, 
+           CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku, -- ✅ Преобразуем 0/1 в `BOOLEAN`
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.externalid = d.productcombinekey AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.externalid = d.ProductGroupID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.externalid = d.ProductBrandID AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.externalid = d.ProductTypeId AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.externalid = d.StatusKey AND a_status.sourceid = 5
+),
+dsku_cftsr AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) FROM dsku_cfts
+),
+
+-- Проверка полноты построчно -- staging -> target
+dsku_cfst AS (
+    SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+           d.UnitWeight, d.productVolume, a_sku.skuarticleid AS SKUArticleID, 
+           CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku,
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.externalid = d.productcombinekey AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.externalid = d.ProductGroupID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.externalid = d.ProductBrandID AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.externalid = d.ProductTypeId AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.externalid = d.StatusKey AND a_status.sourceid = 5
+    EXCEPT  -- ✅ Добавляем EXCEPT, как в dakt_cfst!
+    SELECT d.id, d.shortname, d.fullname, d.description, d.grossweight, d.volume, 
+           a_sku.skuarticleid AS SKUArticleID, 
+           d.iscamparisku,  -- ✅ Здесь не нужен CASE, берем как есть
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.skuarticleid = d.SKUArticleID AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.alcoholtypeid = d.AlcoholTypeID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.brandid = d.brandid AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.skutypeid = d.skutypeid AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.id = d.statusID AND a_status.sourceid = 5
+  ),
+dsku_cfstr AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) FROM dsku_cfst
+),
+
+-- Проверка количества external кодов
+dsku_ec1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(DISTINCT id) 
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+),
+dsku_ec2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(DISTINCT d.ProductKey) 
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s 
+    ON s.externalid = d.ProductKey AND s.sourceid = 5
+),
+
+-- Сборка вывода
+dsku AS (
+    SELECT 
+        dsku_c1.table_name,
+        CASE 
+            WHEN dsku_c1.count = dsku_c2.count THEN 'done'
+            ELSE 'fail'
+        END AS completeness,
+        CASE 
+            WHEN dsku_u1.count = dsku_u2.count THEN 'done'
+            ELSE 'fail'
+        END AS unique,
+        CASE 
+            WHEN dsku_cfstr.count = 0 AND dsku_cftsr.count = 0 THEN 'done'
+            ELSE 'fail'
+        END AS "completeness per row",
+        CASE 
+            WHEN dsku_ec1.count = dsku_ec2.count THEN 'done'
+            ELSE 'fail'
+        END AS "external code check"
+    FROM dsku_c1
+    JOIN dsku_c2 ON dsku_c1.table_name = dsku_c2.table_name
+    JOIN dsku_u1 ON dsku_c1.table_name = dsku_u1.table_name
+    JOIN dsku_u2 ON dsku_c1.table_name = dsku_u2.table_name
+    JOIN dsku_cftsr ON dsku_c1.table_name = dsku_cftsr.table_name
+    JOIN dsku_cfstr ON dsku_c1.table_name = dsku_cfstr.table_name
+    JOIN dsku_ec1 ON dsku_c1.table_name = dsku_ec1.table_name
+    JOIN dsku_ec2 ON dsku_c1.table_name = dsku_ec2.table_name
+)
+
+SELECT * FROM dsku;
+WITH
+-- Проверка таблицы dictionarySKU
+-- Блок проверки полноты по количеству
+dsku_c1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) 
+    FROM (
+        SELECT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+dsku_c2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+               d.UnitWeight, d.productVolume, CAST(d.ProductCombineKey AS VARCHAR), 
+               CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku,
+               CAST(d.ProductBrandID AS BIGINT), 
+               CAST(d.ProductTypeId AS BIGINT), 
+               CAST(d.ProductBusinessKey AS BIGINT), 
+               d.StatusKey, 
+               CAST(d.ProductGroupID AS BIGINT)
+        FROM loading_dms."DimProduct_" d
+        JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    )
+),
+
+-- Блок проверки наличия дубликатов
+dsku_u1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+dsku_u2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*)
+    FROM (
+        SELECT DISTINCT * 
+        FROM target_edw.dictionarySKU d
+        JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    )
+),
+
+-- Проверка полноты построчно -- target -> staging
+dsku_cfts AS (
+    SELECT d.id, d.shortname, d.fullname, d.description, d.grossweight, d.volume, 
+           a_sku.skuarticleid AS SKUArticleID, 
+           d.iscamparisku,
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.skuarticleid = d.SKUArticleID AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.alcoholtypeid = d.AlcoholTypeID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.brandid = d.brandid AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.skutypeid = d.skutypeid AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.id = d.statusID AND a_status.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+           d.UnitWeight, d.productVolume, a_sku.skuarticleid AS SKUArticleID, 
+           CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku, -- ✅ Преобразуем 0/1 в `BOOLEAN`
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.externalid = d.productcombinekey AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.externalid = d.ProductGroupID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.externalid = d.ProductBrandID AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.externalid = d.ProductTypeId AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.externalid = d.StatusKey AND a_status.sourceid = 5
+),
+dsku_cftsr AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) FROM dsku_cfts
+),
+
+-- Проверка полноты построчно -- staging -> target
+dsku_cfst AS (
+    SELECT DISTINCT s.skuid, d.ProductShortName, d.ProductName, d.ProductExtendedName, 
+           d.UnitWeight, d.productVolume, a_sku.skuarticleid AS SKUArticleID, 
+           CASE WHEN d.IsConcurrent = 0 THEN TRUE ELSE FALSE END AS iscamparisku,
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s ON s.externalid = d.ProductKey AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.externalid = d.productcombinekey AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.externalid = d.ProductGroupID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.externalid = d.ProductBrandID AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.externalid = d.ProductTypeId AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.externalid = d.StatusKey AND a_status.sourceid = 5
+    EXCEPT  -- ✅ Добавляем EXCEPT, как в dakt_cfst!
+    SELECT d.id, d.shortname, d.fullname, d.description, d.grossweight, d.volume, 
+           a_sku.skuarticleid AS SKUArticleID, 
+           d.iscamparisku,  -- ✅ Здесь не нужен CASE, берем как есть
+           a_brand.brandid AS brandid,
+           a_skutype.skutypeid AS skutypeid,
+           a_status.id AS statusID,
+           a_alcohol.alcoholtypeid AS AlcoholTypeID
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+    LEFT JOIN target_edw.SKUArticleExternalcode a_sku ON a_sku.skuarticleid = d.SKUArticleID AND a_sku.sourceid = 5
+    LEFT JOIN target_edw.alcoholtypeexternalcode a_alcohol ON a_alcohol.alcoholtypeid = d.AlcoholTypeID AND a_alcohol.sourceid = 5
+    LEFT JOIN target_edw.brandexternalcode a_brand ON a_brand.brandid = d.brandid AND a_brand.sourceid = 5
+    LEFT JOIN target_edw.skutypeexternalcode a_skutype ON a_skutype.skutypeid = d.skutypeid AND a_skutype.sourceid = 5
+    LEFT JOIN target_edw.statusexternalcode a_status ON a_status.id = d.statusID AND a_status.sourceid = 5
+  ),
+dsku_cfstr AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(*) FROM dsku_cfst
+),
+
+-- Проверка количества external кодов
+dsku_ec1 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(DISTINCT id) 
+    FROM target_edw.dictionarySKU d
+    JOIN target_edw.skuexternalcode s ON d.id = s.skuid AND s.sourceid = 5
+),
+dsku_ec2 AS (
+    SELECT 'dictionary_sku' AS table_name, COUNT(DISTINCT d.ProductKey) 
+    FROM loading_dms."DimProduct_" d
+    JOIN target_edw.skuexternalcode s 
+    ON s.externalid = d.ProductKey AND s.sourceid = 5
+),
+
+-- Сборка вывода
+dsku AS (
+    SELECT 
+        dsku_c1.table_name,
+        CASE 
+            WHEN dsku_c1.count = dsku_c2.count THEN 'done'
+            ELSE 'fail'
+        END AS completeness,
+        CASE 
+            WHEN dsku_u1.count = dsku_u2.count THEN 'done'
+            ELSE 'fail'
+        END AS unique,
+        CASE 
+            WHEN dsku_cfstr.count = 0 AND dsku_cftsr.count = 0 THEN 'done'
+            ELSE 'fail'
+        END AS "completeness per row",
+        CASE 
+            WHEN dsku_ec1.count = dsku_ec2.count THEN 'done'
+            ELSE 'fail'
+        END AS "external code check"
+    FROM dsku_c1
+    JOIN dsku_c2 ON dsku_c1.table_name = dsku_c2.table_name
+    JOIN dsku_u1 ON dsku_c1.table_name = dsku_u1.table_name
+    JOIN dsku_u2 ON dsku_c1.table_name = dsku_u2.table_name
+    JOIN dsku_cftsr ON dsku_c1.table_name = dsku_cftsr.table_name
+    JOIN dsku_cfstr ON dsku_c1.table_name = dsku_cfstr.table_name
+    JOIN dsku_ec1 ON dsku_c1.table_name = dsku_ec1.table_name
+    JOIN dsku_ec2 ON dsku_c1.table_name = dsku_ec2.table_name
+)
+
+SELECT * FROM dsku;

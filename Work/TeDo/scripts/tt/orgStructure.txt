@@ -1,0 +1,119 @@
+WITH
+-- 1. Проверка полноты (количество строк) в target
+org_c1 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.orgStructure
+),
+-- 2. Проверка полноты (количество строк) в источнике (staging)
+org_c2 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT
+      d.OrgStructureParentKey AS parentorgstructureid,
+      d.OrgStructureBusinessKey AS parentbusinessid,
+      d.OrgStructureParentBusinessKey AS businessid,
+      d.LevelName AS shortname,
+      d.OrgStructureName AS fullname,
+      d.LevelKey AS level,
+      d.LevelKey AS statusid
+    FROM loading_dms."DimOrgStructure" d
+  ) t
+),
+-- 3. Проверка наличия дубликатов в target
+org_u1 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM target_edw.orgStructure
+),
+org_u2 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM (
+    SELECT DISTINCT *
+    FROM target_edw.orgStructure
+  ) t
+),
+-- 4. Проверка полноты построчно – target → staging
+org_cfts AS (
+  SELECT parentorgstructureid::TEXT,
+         parentbusinessid::TEXT,
+         businessid::TEXT,
+         shortname::TEXT,
+         fullname::TEXT,
+         level::TEXT,
+         statusid::TEXT
+  FROM target_edw.orgStructure
+  EXCEPT
+  SELECT DISTINCT
+         CAST(d.OrgStructureParentKey AS TEXT),
+         CAST(d.OrgStructureBusinessKey AS TEXT),
+         CAST(d.OrgStructureParentBusinessKey AS TEXT),
+         CAST(d.LevelName AS TEXT),
+         CAST(d.OrgStructureName AS TEXT),
+         CAST(d.LevelKey AS TEXT),
+         CAST(d.LevelKey AS TEXT)
+  FROM loading_dms."DimOrgStructure" d
+),
+org_cftsr AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM org_cfts
+),
+-- 5. Проверка полноты построчно – staging → target
+org_cfst AS (
+  SELECT DISTINCT
+         CAST(d.OrgStructureParentKey AS TEXT),
+         CAST(d.OrgStructureBusinessKey AS TEXT),
+         CAST(d.OrgStructureParentBusinessKey AS TEXT),
+         CAST(d.LevelName AS TEXT),
+         CAST(d.OrgStructureName AS TEXT),
+         CAST(d.LevelKey AS TEXT),
+         CAST(d.LevelKey AS TEXT)
+  FROM loading_dms."DimOrgStructure" d
+  EXCEPT
+  SELECT 
+         parentorgstructureid::TEXT,
+         parentbusinessid::TEXT,
+         businessid::TEXT,
+         shortname::TEXT,
+         fullname::TEXT,
+         level::TEXT,
+         statusid::TEXT
+  FROM target_edw.orgStructure
+),
+org_cfstr AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(*) AS count
+  FROM org_cfst
+),
+-- 6. Проверка внешних кодов (сравнение уникальных значений fullname)
+org_ec1 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(DISTINCT fullname) AS count
+  FROM target_edw.orgStructure
+),
+org_ec2 AS (
+  SELECT 'orgStructure' AS table_name,
+         COUNT(DISTINCT OrgStructureName) AS count
+  FROM loading_dms."DimOrgStructure" d
+),
+-- Итоговая сборка результата
+org AS (
+  SELECT
+    org_c1.table_name,
+    CASE WHEN org_c1.count = org_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+    CASE WHEN org_u1.count = org_u2.count THEN 'done' ELSE 'fail' END AS unique,
+    CASE WHEN org_cfstr.count = 0 AND org_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+    CASE WHEN org_ec1.count = org_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+  FROM org_c1
+  JOIN org_c2  ON org_c1.table_name = org_c2.table_name
+  JOIN org_u1  ON org_c1.table_name = org_u1.table_name
+  JOIN org_u2  ON org_c1.table_name = org_u2.table_name
+  JOIN org_cftsr ON org_c1.table_name = org_cftsr.table_name
+  JOIN org_cfstr ON org_c1.table_name = org_cfstr.table_name
+  JOIN org_ec1  ON org_c1.table_name = org_ec1.table_name
+  JOIN org_ec2  ON org_c1.table_name = org_ec2.table_name
+)
+SELECT * FROM org;

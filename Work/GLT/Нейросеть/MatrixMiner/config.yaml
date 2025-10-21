@@ -1,0 +1,46 @@
+# контракт LLM -> builder
+
+columns:
+  # Обязательное: колонка со списком ролей
+  roles: "Роли"
+
+  # Очень желательно - ресурс/система (AD, Jira, Siebel CRM и т.п.)
+  resource: "Название ресурса"
+
+  # Опциональные, но улучшают группировку (если есть в файле — укажи их имена)
+  department: "Департамент"
+  position: "Должность"
+  employment: "Занятость"
+
+  # Служебные/необязательные
+  user: "Имя пользователя"       # не участвует в группировке, только для аудита (можно null)
+  business_role: null             # если в файле уже есть готовая колонка бизнес-роли — укажи её имя
+
+roles_parse:
+  delimiters: [",", ";", "|"]     # реальные разделители в данных
+  normalize_case: "title"         # lower | upper | title | none
+  deduplicate: true
+  sort_alpha: true
+
+business_role_rule:
+  # Если business_role - use_column — брать имя из указанной колонки
+  # Если generate — собирать по шаблону ниже
+  type: "generate"
+  template: "{position}_{resource}_{department}"
+  separator: "_"
+
+output_headers:
+  department: "Департамент"
+  position: "Должность"
+  employment: "Занятость"
+  business_role: "Бизнес-роль"
+  resource: "Название ресурса"
+  role: "Роль"
+
+# Блок не обязателен, для справки
+validation:
+  errors: []
+  warnings: []
+  summary:
+    rows_seen: 0
+    columns_count: 0

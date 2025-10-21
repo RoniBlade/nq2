@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+langchain-chroma
+sentence-transformers
+rank-bm25
+rapidfuzz
+pymorphy3
+numpy
+ollama
+llama-cpp-python
+pyyaml

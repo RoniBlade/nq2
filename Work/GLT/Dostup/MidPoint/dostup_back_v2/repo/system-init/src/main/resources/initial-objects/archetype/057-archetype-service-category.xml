@@ -1,0 +1,36 @@
+<!--
+  ~ Copyright (c) 2019 Evolveum and contributors
+  ~
+  ~ This work is dual-licensed under the Apache License 2.0
+  ~ and European Union Public License. See LICENSE file for details.
+  -->
+<archetype oid="ff1f11ab-5a76-1b3f-a000-7415f9bfea40"
+xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+xmlns:org='http://midpoint.evolveum.com/xml/ns/public/common/org-3'>
+<name>
+<t:orig>Service Category</t:orig>
+<t:norm>service category</t:norm>
+<t:lang>
+<t:ru>Роли категорий</t:ru>
+</t:lang>
+</name>
+<description>Роли для группировки заявок в магазине</description>
+<archetypePolicy>
+<display>
+<label>Service Category</label>
+<pluralLabel>Service Category</pluralLabel>
+<icon>
+<cssClass>fa fa-list-alt</cssClass>
+<color>black</color>
+</icon>
+</display>
+</archetypePolicy>
+<assignment>
+<assignmentRelation>
+<description>This archetype is applicable to roles.</description>
+<holderType>RoleType</holderType>
+</assignmentRelation>
+</assignment>
+</archetype>

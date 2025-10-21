@@ -1,0 +1,156 @@
+WITH
+-- 1. Проверка полноты (количество строк) в target
+cw_c1 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.ClientWarehouse cw
+        JOIN target_edw.clientExternalCode ce
+          ON cw.clientid = ce.clientid
+         AND ce.sourceid = 5
+        JOIN target_edw.warehouseExternalCode we
+          ON cw.warehouseid = we.warehouseid
+         AND we.sourceid = 5
+    ) t
+),
+-- 2. Проверка полноты (количество строк) в staging
+cw_c2 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT
+            d.customerkey AS clientid,
+            d.warehousekey AS warehouseid
+        FROM loading_dms."DimWarehouse" d
+        LEFT JOIN target_edw.clientExternalCode ce
+          ON ce.externalid = d.customerkey
+         AND ce.sourceid = 5
+        LEFT JOIN target_edw.warehouseExternalCode we
+          ON we.externalid = d.warehousekey
+         AND we.sourceid = 5
+    ) t
+),
+
+-- 3. Проверка наличия дубликатов в target
+cw_u1 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT *
+        FROM target_edw.ClientWarehouse cw
+        JOIN target_edw.clientExternalCode ce
+          ON cw.clientid = ce.clientid
+         AND ce.sourceid = 5
+        JOIN target_edw.warehouseExternalCode we
+          ON cw.warehouseid = we.warehouseid
+         AND we.sourceid = 5
+    ) t
+),
+cw_u2 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM (
+        SELECT DISTINCT *
+        FROM target_edw.ClientWarehouse cw
+        JOIN target_edw.clientExternalCode ce
+          ON cw.clientid = ce.clientid
+         AND ce.sourceid = 5
+        JOIN target_edw.warehouseExternalCode we
+          ON cw.warehouseid = we.warehouseid
+         AND we.sourceid = 5
+    ) t
+),
+
+-- 4. Проверка полноты построчно – target -> staging
+cw_cfts AS (
+    SELECT cw.clientid::TEXT,
+           cw.warehouseid::TEXT
+    FROM target_edw.ClientWarehouse cw
+    JOIN target_edw.clientExternalCode ce
+      ON cw.clientid = ce.clientid
+     AND ce.sourceid = 5
+    JOIN target_edw.warehouseExternalCode we
+      ON cw.warehouseid = we.warehouseid
+     AND we.sourceid = 5
+    EXCEPT 
+    SELECT DISTINCT
+           CAST(ce2.clientid AS TEXT),
+           CAST(we2.warehouseid AS TEXT)
+    FROM loading_dms."DimWarehouse" d
+    LEFT JOIN target_edw.clientExternalCode ce2
+      ON ce2.externalid = d.customerkey
+     AND ce2.sourceid = 5
+    LEFT JOIN target_edw.warehouseExternalCode we2
+      ON we2.externalid = d.warehousekey
+     AND we2.sourceid = 5
+),
+cw_cftsr AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM cw_cfts
+),
+
+-- 5. Проверка полноты построчно – staging -> target
+cw_cfst AS (
+    SELECT DISTINCT
+           CAST(ce2.clientid AS TEXT),
+           CAST(we2.warehouseid AS TEXT)
+    FROM loading_dms."DimWarehouse" d
+    LEFT JOIN target_edw.clientExternalCode ce2
+      ON ce2.externalid = d.customerkey
+     AND ce2.sourceid = 5
+    LEFT JOIN target_edw.warehouseExternalCode we2
+      ON we2.externalid = d.warehousekey
+     AND we2.sourceid = 5
+    EXCEPT 
+    SELECT
+           cw.clientid::TEXT,
+           cw.warehouseid::TEXT
+    FROM target_edw.ClientWarehouse cw
+    JOIN target_edw.clientExternalCode ce
+      ON cw.clientid = ce.clientid
+     AND ce.sourceid = 5
+    JOIN target_edw.warehouseExternalCode we
+      ON cw.warehouseid = we.warehouseid
+     AND we.sourceid = 5
+),
+cw_cfstr AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(*) AS count
+    FROM cw_cfst
+),
+
+-- 6. Проверка внешних кодов (сравнение уникальных значений clientid)
+cw_ec1 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(DISTINCT cw.clientid) AS count
+    FROM target_edw.ClientWarehouse cw
+    JOIN target_edw.clientExternalCode ce
+      ON cw.clientid = ce.clientid
+     AND ce.sourceid = 5
+),
+cw_ec2 AS (
+    SELECT 'ClientWarehouse' AS table_name,
+           COUNT(DISTINCT d.customerkey) AS count
+    FROM loading_dms."DimWarehouse" d
+),
+
+-- Итоговая сборка результата
+cw AS (
+    SELECT
+        cw_c1.table_name,
+        CASE WHEN cw_c1.count = cw_c2.count THEN 'done' ELSE 'fail' END AS completeness,
+        CASE WHEN cw_u1.count = cw_u2.count THEN 'done' ELSE 'fail' END AS unique,
+        CASE WHEN cw_cfstr.count = 0 AND cw_cftsr.count = 0 THEN 'done' ELSE 'fail' END AS "completeness per row",
+        CASE WHEN cw_ec1.count = cw_ec2.count THEN 'done' ELSE 'fail' END AS "external code check"
+    FROM cw_c1
+    JOIN cw_c2  ON cw_c1.table_name = cw_c2.table_name
+    JOIN cw_u1  ON cw_c1.table_name = cw_u1.table_name
+    JOIN cw_u2  ON cw_c1.table_name = cw_u2.table_name
+    JOIN cw_cftsr ON cw_c1.table_name = cw_cftsr.table_name
+    JOIN cw_cfstr ON cw_c1.table_name = cw_cfstr.table_name
+    JOIN cw_ec1  ON cw_c1.table_name = cw_ec1.table_name
+    JOIN cw_ec2  ON cw_c1.table_name = cw_ec2.table_name
+)
+SELECT * FROM cw;
