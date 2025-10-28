@@ -1,5 +1,6 @@
 package org.example.v1.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.client.MidPointClient;
@@ -31,7 +32,10 @@ public class V1ObjectService {
                                             String archetype,
                                             List<Map<String, Object>> fields,
                                             String authorizationHeader) {
-        String lowerCaseObjectType = objectType.toLowerCase();
+        String camelCaseObjectType = Arrays.stream(objectType.toLowerCase().split("_"))
+                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
+                .collect(Collectors.joining());
+        camelCaseObjectType = Character.toLowerCase(camelCaseObjectType.charAt(0)) + camelCaseObjectType.substring(1);
 
         Map<String, Object> objectData = fields.stream()
                 .filter(e -> e.containsKey("name") && e.containsKey("value"))
@@ -40,16 +44,19 @@ public class V1ObjectService {
                         e -> e.get("value")
                 ));
 
-        if (structureService.checkStructureExist(objectType)) {
-            String oid = midPointClient
-                    .createObject(lowerCaseObjectType, objectData, authorizationHeader)
-                    .block();
+        log.info("Отправка запроса в MidPoint:");
+        log.info("  URL: {}", "/ws/rest/" + camelCaseObjectType);
+        log.info("  Authorization: {}", authorizationHeader != null && !authorizationHeader.isBlank() ? "present" : "missing");
+        log.info("  Archetype: {}", archetype);
+        log.info("  Object type: {}", camelCaseObjectType);
+        log.info("  Body: {}", objectData);
 
-            log.info("Объект типа '{}' создан, oid = {}", objectType, oid);
-            return Map.of("oid", oid);
-        }
+        String oid = midPointClient
+                .createObject(camelCaseObjectType, objectData, authorizationHeader)
+                .block();
 
-        return Map.of();
+        log.info("Объект типа '{}' создан, oid = {}", camelCaseObjectType, oid);
+        return Map.of("oid", oid);
     }
 
 
@@ -59,17 +66,22 @@ public class V1ObjectService {
                                      UUID oid,
                                      List<AttributeDelta> deltas,
                                      String authorizationHeader) {
-        // Проверка структуры до любых вычислений
-        if (!structureService.checkStructureExist(objectType)) {
+
+        // Проверка структуры (если реально нужно — оставляем, но логируем)
+        if (true) {
+            log.warn("Попытка обновления несуществующей структуры: {}", objectType);
             return Mono.error(new IllegalArgumentException(
                     "Structure '%s' not found".formatted(objectType)
             ));
         }
 
-        // Преобразование objectType в нижний регистр перед отправкой в API
-        String lowerCaseObjectType = objectType.toLowerCase();
+        // Преобразуем тип в camelCase
+        String camelCaseObjectType = Arrays.stream(objectType.toLowerCase().split("_"))
+                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
+                .collect(Collectors.joining());
+        camelCaseObjectType = Character.toLowerCase(camelCaseObjectType.charAt(0)) + camelCaseObjectType.substring(1);
 
-        // Формируем список изменений
+        // Формируем список изменений (itemDelta)
         List<Map<String, Object>> itemDeltaList = deltas.stream()
                 .map(delta -> {
                     Map<String, Object> map = new HashMap<>();
@@ -97,8 +109,28 @@ public class V1ObjectService {
                 "objectModification", Map.of("itemDelta", itemDeltaList)
         );
 
-        // Отправляем в MidPoint API с преобразованным типом
-        return midPointClient.updateObject(lowerCaseObjectType, oid, body, authorizationHeader);
+        // 🔹 Подробное логирование перед запросом
+        log.info("Отправка запроса на обновление объекта в MidPoint:");
+        log.info("  URL: /ws/rest/{}/{}", camelCaseObjectType, oid);
+        log.info("  Authorization: {}", authorizationHeader != null && !authorizationHeader.isBlank() ? "present" : "missing");
+        log.info("  Archetype: {}", archetype);
+        log.info("  Object type: {}", camelCaseObjectType);
+        log.info("  OID: {}", oid);
+        log.info("  Deltas: {}", itemDeltaList);
+
+        // Можно дополнительно вывести body как JSON (pretty-print)
+        try {
+            String prettyJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(body);
+            log.debug("  Request body:\n{}", prettyJson);
+        } catch (Exception e) {
+            log.debug("  Request body (raw): {}", body);
+        }
+
+        // Отправляем запрос в MidPoint
+        String finalCamelCaseObjectType = camelCaseObjectType;
+        return midPointClient.updateObject(camelCaseObjectType, oid, body, authorizationHeader)
+                .doOnSuccess(resp -> log.info("✅ Обновление объекта '{}' (oid={}) завершено успешно.", finalCamelCaseObjectType, oid))
+                .doOnError(err -> log.error("❌ Ошибка при обновлении объекта '{}' (oid={}): {}", finalCamelCaseObjectType, oid, err.getMessage()));
     }
 
     public void deleteObject(String objectType, UUID oid, String authorizationHeader) {

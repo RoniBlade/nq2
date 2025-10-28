@@ -22,14 +22,12 @@ public interface ObjectInfoLiteMapper {
     @Mapping(target = "photo", expression = "java(decodePhoto(dto.getPhoto()))")
     ObjectInfoLiteEntity toEntity(ObjectInfoLiteDto dto);
 
-    // ✅ Дефолтный метод: byte[] → String (base64)
     default String encodePhoto(byte[] photo) {
         return (photo != null && photo.length > 0)
                 ? Base64.getEncoder().encodeToString(photo)
                 : null;
     }
 
-    // ✅ Дефолтный метод: String (base64) → byte[]
     default byte[] decodePhoto(String base64) {
         return (base64 != null && !base64.isEmpty())
                 ? Base64.getDecoder().decode(base64)

@@ -18,6 +18,8 @@ import org.springframework.util.StopWatch;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static jakarta.xml.bind.DatatypeConverter.parseHexBinary;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -82,7 +84,6 @@ public class V1ObjectFieldService {
     }
 
     /* ====================== VALUES (ONE) ====================== */
-
     public Map<String, Object> valuesByObjectTypeAndOid(String objectType, UUID oid, FilterRequest request) {
         return valuesByObjectTypeOrArchetypeAndOid(objectType, null, oid, request);
     }
@@ -118,6 +119,34 @@ public class V1ObjectFieldService {
                     objectType, effectiveObjectParam, (raw != null ? raw.size() : 0));
         }
 
+        // 🔹 Преобразуем бинарные поля (photo, jpegPhoto и т.п.) в Base64
+        if (raw != null) {
+            for (Map.Entry<String, Object> entry : raw.entrySet()) {
+                String key = entry.getKey().toLowerCase();
+                Object val = entry.getValue();
+
+                // Обрабатываем поля, где может быть фото
+                if (key.contains("photo") || key.contains("image")) {
+                    try {
+                        if (val instanceof byte[] bytes) {
+                            // Прямое преобразование из byte[]
+                            entry.setValue("data:image/jpeg;base64," + Base64.getEncoder().encodeToString(bytes));
+
+                        } else if (val instanceof String s) {
+                            // PostgreSQL bytea приходит как строка типа "\xFFD8FF..."
+                            if (s.startsWith("\\x")) {
+                                byte[] bytes = parseHexBinary(s.substring(2));
+                                entry.setValue(Base64.getEncoder().encodeToString(bytes));
+                            }
+                            // Иногда MidPoint возвращает Base64 напрямую — не трогаем
+                        }
+                    } catch (Exception e) {
+                        log.warn("Ошибка преобразования фото [{}]: {}", key, e.getMessage());
+                    }
+                }
+            }
+        }
+
         // 2) мета с фолбэком
         sw.start("load-fields");
         List<ObjectTypeFieldEntity> meta = selectUsingFallback(objectType, archetype, true, raw, columns, excludeCols);
@@ -132,8 +161,10 @@ public class V1ObjectFieldService {
                 ctx("objectType", objectType, "archetype", archetype,
                         "effectiveObjectParam", effectiveObjectParam, "oid", oid,
                         "columns", columns, "exclude", excludeCols, "fieldsCount", meta.size()));
+
         return out;
     }
+
 
     /* ====================== Выбор эффективного OBJECT ====================== */
 
